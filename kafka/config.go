@@ -2,11 +2,14 @@ package kafka
 
 import (
 	"crypto/tls"
+	"strings"
 	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/rcrowley/go-metrics"
 	"golang.org/x/net/proxy"
+
+	"github.com/trinhdaiphuc/go-kit/collection"
 )
 
 // AdminConfig is the namespace for ClusterAdmin properties used by the administrative Kafka client.
@@ -177,4 +180,16 @@ func DefaultConfig() *sarama.Config {
 	config.ClientID = defaultClientID
 
 	return config
+}
+
+func GetMessagesTopic(messages []*sarama.ProducerMessage) string {
+	topics := collection.ToArrayString(
+		messages, func(msg *sarama.ProducerMessage) string {
+			return msg.Topic
+		},
+	)
+
+	topics = collection.DeDuplicate(topics)
+	result := strings.Join(topics, ",")
+	return result
 }
