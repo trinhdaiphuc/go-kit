@@ -39,14 +39,14 @@ func NewServerMonitor(serviceName string) *Monitor {
 		serviceName: serviceName,
 		requestRates: prom.NewCounterVec(
 			prom.CounterOpts{
-				Name: "bank_request_rates",
+				Name: "go_kit_request_rates",
 				Help: "Total number of request hit to the server.",
 			},
 			metricLabels,
 		),
 		durationSeconds: prom.NewHistogramVec(
 			prom.HistogramOpts{
-				Name:    "bank_request_duration_seconds",
+				Name:    "go_kit_request_duration_seconds",
 				Help:    "Histogram of response durationSeconds (seconds) of request that had been handled by the server.",
 				Buckets: defaultBuckets,
 			},
