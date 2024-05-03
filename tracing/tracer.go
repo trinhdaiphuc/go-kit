@@ -20,31 +20,21 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const (
-	Resolver   = "Resolver"
-	Service    = "Service"
-	Repository = "Repository"
-)
-
-type Jaeger struct {
-	AgentHost string `json:"agent_host,omitempty" mapstructure:"agent_host"`
-	AgentPort string `json:"agent_port,omitempty" mapstructure:"agent_port"`
-}
-
-type OtelExporter struct {
-	Jaeger *Jaeger `json:"jaeger,omitempty" mapstructure:"jaeger"`
-}
-
 // TracerProvider returns an OpenTelemetry TracerProvider configured to use
 // the Otel exporter that will send spans to the provided url. The returned
 // TracerProvider will also use a Resource configured with all the information
 // about the application.
-func TracerProvider(serviceName, version string, cfg *OtelExporter) (*tracesdk.TracerProvider, func(), error) {
+//
+// By default, if an environment variable is not set, and this option is not
+// passed, "localhost:4317" will be used.
+//
+// If the OTEL_EXPORTER_OTLP_ENDPOINT or OTEL_EXPORTER_OTLP_METRICS_ENDPOINT
+// environment variable is set, and this option is not passed, that variable
+// value will be used. If both are set, OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+// will take precedence.
+func TracerProvider(serviceName, version string) (*tracesdk.TracerProvider, func(), error) {
 	// Create the Otel exporter
-	traceClient := otlptracegrpc.NewClient(
-		otlptracegrpc.WithInsecure(),
-		otlptracegrpc.WithEndpoint(cfg.Jaeger.AgentHost+":"+cfg.Jaeger.AgentPort),
-	)
+	traceClient := otlptracegrpc.NewClient(otlptracegrpc.WithInsecure(), otlptracegrpc.WithEndpoint("localhost:4317"))
 	exp, err := otlptrace.New(context.Background(), traceClient)
 	if err != nil {
 		return nil, nil, err
@@ -74,23 +64,15 @@ func TracerProvider(serviceName, version string, cfg *OtelExporter) (*tracesdk.T
 	)
 	otel.SetTextMapPropagator(pb)
 
-	ctx, cancel := context.WithCancel(context.Background())
-
-	cleanup := func(ctx context.Context) func() {
-		return func() {
-			defer cancel()
-
-			// Cleanly shutdown and flush telemetry when the application exits.
-			func(ctx context.Context) {
-				// Do not make the application hang when it is shutdown.
-				ctx, cancel = context.WithTimeout(ctx, time.Second*5)
-				defer cancel()
-				if err := tp.Shutdown(ctx); err != nil {
-					otel.Handle(err)
-				}
-			}(ctx)
+	// Cleanly shutdown and flush telemetry when the application exits.
+	cleanup := func() {
+		// Do not make the application hang when it is shutdown.
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		defer cancel()
+		if err := tp.Shutdown(ctx); err != nil {
+			otel.Handle(err)
 		}
-	}(ctx)
+	}
 
 	return tp, cleanup, nil
 }
