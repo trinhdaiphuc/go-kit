@@ -52,10 +52,10 @@ func WrapConsumerHandler(handler kafka.ConsumerHandlerFn) kafka.ConsumerHandlerF
 		defer span.End()
 
 		err := handler(newCtx, message)
-
 		if err != nil {
 			span.SetAttributes(attribute.String("messaging.error", err.Error()))
 		}
+
 		return err
 	}
 }

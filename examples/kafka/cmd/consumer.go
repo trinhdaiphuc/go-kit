@@ -12,7 +12,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/trinhdaiphuc/go-kit/kafka"
+	"github.com/trinhdaiphuc/go-kit/metrics"
 	"github.com/trinhdaiphuc/go-kit/thread"
+	"github.com/trinhdaiphuc/go-kit/tracing"
 )
 
 var (
@@ -45,12 +47,31 @@ func NewClient() (kafka.Client, error) {
 
 func NewConsumer() (kafka.Consumer, error) {
 	cli, err := NewClient()
-
 	if err != nil {
 		return nil, err
 	}
 
-	consumer, err := kafka.NewConsumer(cli, groupID, []string{topic}, handler)
+	handlerFn := handler
+
+	if useMetrics {
+		fmt.Println("Using metrics")
+		metrics.NewServerMonitor("kafka-consumer")
+		metrics.KafkaConsumerHandlerInterceptor(handlerFn)
+	}
+
+	if useTracing {
+		fmt.Println("Using tracing")
+		_, shutdown, err := tracing.TracerProvider("kafka-consumer", "1.0.0")
+		if err != nil {
+			panic(err)
+			return nil, err
+		}
+		fmt.Println("Init tracing success")
+		defer shutdown()
+		handlerFn = tracing.WrapConsumerHandler(handlerFn)
+	}
+
+	consumer, err := kafka.NewConsumer(cli, groupID, []string{topic}, handlerFn)
 	if err != nil {
 		return nil, err
 	}
@@ -73,11 +94,13 @@ func consumerRun(_ *cobra.Command, _ []string) {
 
 	<-stop
 
+	fmt.Println("Shutting down consumer...")
 	rg.Run(consumer.Close)
 	rg.Wait()
+	fmt.Println("consumer closed")
 }
 
 func handler(ctx context.Context, message *sarama.ConsumerMessage) error {
-	fmt.Printf("Received message: %s\n, topic: %s, partition: %d, offset: %d\n", message.Value, message.Topic, message.Partition, message.Offset)
+	fmt.Printf("Received message from topic: %s, partition: %d, offset: %d\nValue: %s\n\n", message.Topic, message.Partition, message.Offset, message.Value)
 	return nil
 }
