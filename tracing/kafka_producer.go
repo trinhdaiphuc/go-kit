@@ -48,16 +48,13 @@ func (p *producer) SendMessages(msgs []*sarama.ProducerMessage) error {
 
 // WrapKafkaProducer wraps a sarama.SyncProducer so that all produced messages
 // are traced.
-func WrapKafkaProducer(saramaConfig *sarama.Config, p kafka.Producer, opts ...Option) kafka.Producer {
+func WrapKafkaProducer(p kafka.Producer, opts ...Option) kafka.Producer {
 	cfg := newConfig(opts...)
-	if saramaConfig == nil {
-		saramaConfig = sarama.NewConfig()
-	}
 
 	return &producer{
 		Producer:     p,
 		cfg:          cfg,
-		saramaConfig: saramaConfig,
+		saramaConfig: p.GetClient().Config(),
 	}
 }
 

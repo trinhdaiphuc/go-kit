@@ -1,11 +1,13 @@
 package kafka
 
 import (
-	"log"
-
 	"github.com/IBM/sarama"
 	"golang.org/x/net/context"
+
+	"github.com/trinhdaiphuc/go-kit/log"
 )
+
+//go:generate mockgen -destination=./mocks/$GOFILE -source=$GOFILE -package=kafkamock
 
 // ConsumerHandler represents a Sarama consumer group consumer
 type ConsumerHandler struct {
@@ -39,8 +41,8 @@ func (c *ConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 		select {
 		case message, ok := <-claim.Messages():
 			if !ok { // check message to prevent panic (ISSUE: https://github.com/IBM/sarama/issues/2477)
-				log.Printf("Message channel was closed: topic %s, partition %d, next_offset %d.\n",
-					claim.Topic(), claim.Partition(), claim.HighWaterMarkOffset())
+				log.Bg().Warn("Message channel was closed", log.String("topic", claim.Topic()),
+					log.Int32("partition", claim.Partition()), log.Int64("next_offset", claim.HighWaterMarkOffset()))
 				return nil
 			}
 

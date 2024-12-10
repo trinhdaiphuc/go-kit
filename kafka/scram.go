@@ -9,6 +9,7 @@ import (
 	"github.com/xdg-go/scram"
 )
 
+//go:generate mockgen -destination=./mocks/$GOFILE -source=$GOFILE -package=kafkamock
 // Algorithm determines the hash function used by SCRAM to protect the user's
 // credentials.
 type Algorithm interface {

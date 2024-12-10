@@ -28,15 +28,10 @@ var (
 	}
 )
 
-func NewProducer() (kafka.Producer, error) {
-	cli, err := NewClient()
+func NewProducer() (kafka.Producer, func(), error) {
+	producer, cleanup, err := kafka.NewProducer(NewConfig())
 	if err != nil {
-		return nil, err
-	}
-
-	producer, err := kafka.NewProducer(cli, []string{topic})
-	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if useMetrics {
@@ -50,23 +45,24 @@ func NewProducer() (kafka.Producer, error) {
 		_, shutdown, err := tracing.TracerProvider("kafka-producer", "1.0.0")
 		if err != nil {
 			panic(err)
-			return nil, err
+			return nil, nil, err
 		}
 		defer shutdown()
-		producer = tracing.WrapKafkaProducer(cli.Config(), producer)
+		producer = tracing.WrapKafkaProducer(producer)
 	}
 
-	return producer, nil
+	return producer, cleanup, nil
 }
 
 func producerRun(_ *cobra.Command, _ []string) {
-	producer, err := NewProducer()
+	producer, cleanup, err := NewProducer()
 	if err != nil {
 		panic(err)
 	}
 
 	sendMessage(producer)
 
+	cleanup()
 	err = producer.Close()
 	if err != nil {
 		fmt.Println("error closing producer: ", err)

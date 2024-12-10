@@ -28,31 +28,17 @@ var (
 	}
 )
 
-func NewClient() (kafka.Client, error) {
-	var (
-		opts = []kafka.Option{
-			kafka.WithClientID(clientID),
-			kafka.WithConsumerGroupBalance(sarama.NewBalanceStrategyRoundRobin()),
-			kafka.WithProducerPartitioner(sarama.NewRandomPartitioner),
-		}
-	)
-
-	cli, err := kafka.NewClient(brokers, opts...)
-	if err != nil {
-		return nil, err
+func NewConfig() *kafka.Config {
+	return &kafka.Config{
+		ClientID: clientID,
+		Brokers:  brokers,
+		GroupID:  groupID,
+		Topics:   []string{topic},
 	}
-
-	return cli, nil
 }
 
 func NewConsumer() (kafka.Consumer, error) {
-	cli, err := NewClient()
-	if err != nil {
-		return nil, err
-	}
-
 	handlerFn := handler
-
 	if useMetrics {
 		fmt.Println("Using metrics")
 		metrics.NewServerMonitor("kafka-consumer")
@@ -71,7 +57,7 @@ func NewConsumer() (kafka.Consumer, error) {
 		handlerFn = tracing.WrapConsumerHandler(handlerFn)
 	}
 
-	consumer, err := kafka.NewConsumer(cli, groupID, []string{topic}, handlerFn)
+	consumer, err := kafka.NewConsumer(NewConfig(), handlerFn)
 	if err != nil {
 		return nil, err
 	}
