@@ -82,7 +82,7 @@ func (w *Worker) startConsumer() {
 			w.opts.streamName,
 			w.opts.group,
 			"$",
-		).Err(); err != nil && !errors.Is(err, redis.Nil) {
+		).Err(); err != nil {
 			w.opts.logger.Error(err)
 		}
 
@@ -109,7 +109,7 @@ func (w *Worker) fetchTask() {
 			// until an entry is found
 			Block: w.opts.blockTime,
 		}).Result()
-		if err != nil {
+		if err != nil && !errors.Is(err, redis.Nil) {
 			w.opts.logger.Errorf("error while reading from redis %v", err)
 			continue
 		}
