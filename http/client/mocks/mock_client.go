@@ -13,7 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	header "gitlab.zalopay.vn/bank/go-kit/header"
+	httpclient "github.com/trinhdaiphuc/go-kit/http/client"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -42,7 +42,7 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockClient) Delete(ctx context.Context, url string, headers header.Headers, request any) ([]byte, int, error) {
+func (m *MockClient) Delete(ctx context.Context, url string, headers httpclient.Headers, request any) ([]byte, int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", ctx, url, headers, request)
 	ret0, _ := ret[0].([]byte)
@@ -58,7 +58,7 @@ func (mr *MockClientMockRecorder) Delete(ctx, url, headers, request any) *gomock
 }
 
 // Get mocks base method.
-func (m *MockClient) Get(ctx context.Context, url string, headers header.Headers, request any) ([]byte, int, error) {
+func (m *MockClient) Get(ctx context.Context, url string, headers httpclient.Headers, request any) ([]byte, int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", ctx, url, headers, request)
 	ret0, _ := ret[0].([]byte)
@@ -74,7 +74,7 @@ func (mr *MockClientMockRecorder) Get(ctx, url, headers, request any) *gomock.Ca
 }
 
 // Post mocks base method.
-func (m *MockClient) Post(ctx context.Context, url string, headers header.Headers, data any) ([]byte, int, error) {
+func (m *MockClient) Post(ctx context.Context, url string, headers httpclient.Headers, data any) ([]byte, int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Post", ctx, url, headers, data)
 	ret0, _ := ret[0].([]byte)
@@ -90,7 +90,7 @@ func (mr *MockClientMockRecorder) Post(ctx, url, headers, data any) *gomock.Call
 }
 
 // Put mocks base method.
-func (m *MockClient) Put(ctx context.Context, url string, headers header.Headers, data any) ([]byte, int, error) {
+func (m *MockClient) Put(ctx context.Context, url string, headers httpclient.Headers, data any) ([]byte, int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Put", ctx, url, headers, data)
 	ret0, _ := ret[0].([]byte)

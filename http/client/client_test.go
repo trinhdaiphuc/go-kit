@@ -8,7 +8,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"gitlab.zalopay.vn/bank/go-kit/metrics"
+	"github.com/trinhdaiphuc/go-kit/metrics"
 )
 
 func TestNew(t *testing.T) {
