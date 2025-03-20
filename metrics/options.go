@@ -9,7 +9,8 @@ import (
 type Filter func(*http.Request) bool
 
 type config struct {
-	Filters []Filter
+	Filters     []Filter
+	ServiceName string
 }
 
 // Option specifies instrumentation configuration options.
@@ -29,5 +30,11 @@ func (o optionFunc) apply(c *config) {
 func WithFilter(f ...Filter) Option {
 	return optionFunc(func(c *config) {
 		c.Filters = append(c.Filters, f...)
+	})
+}
+
+func WithServiceName(name string) Option {
+	return optionFunc(func(c *config) {
+		c.ServiceName = name
 	})
 }
