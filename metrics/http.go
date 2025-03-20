@@ -31,7 +31,7 @@ func MetricMiddleware(opts ...Option) gin.HandlerFunc {
 
 		httpStatus := strconv.Itoa(ctx.Writer.Status())
 
-		doneHandleRequest(InboundCall, ctx.Request.Method, ctx.FullPath(), httpStatus, elapsedTime)
+		doneHTTPHandleRequest(InboundCall, ctx.Request.Method, ctx.FullPath(), httpStatus, elapsedTime)
 	}
 }
 
@@ -65,7 +65,7 @@ func ClientHTTPTripperware(opts ...Option) httptripperware.Tripperware {
 
 			endpoint := httpEndpoint(req.URL.Path, cfg.ServiceName)
 
-			doneHandleRequest(OutboundCall, req.Method, endpoint, httpStatus, elapsedTime)
+			doneHTTPHandleRequest(OutboundCall, req.Method, endpoint, httpStatus, elapsedTime)
 			return resp, err
 		})
 	}

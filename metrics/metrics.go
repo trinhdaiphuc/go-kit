@@ -7,9 +7,11 @@ import (
 // Monitor represents a collection of monitor to be registered on a
 // Prometheus monitor registry for a http server.
 type Monitor struct {
-	serviceName     string
-	requestRates    *prom.CounterVec
-	durationSeconds *prom.HistogramVec
+	serviceName         string
+	httpRequestRates    *prom.CounterVec
+	httpDurationSeconds *prom.HistogramVec
+	grpcRequestRates    *prom.CounterVec
+	grpcDurationSeconds *prom.HistogramVec
 }
 
 const (
@@ -37,32 +39,49 @@ func NewServerMonitor(serviceName string) *Monitor {
 
 	monitor = &Monitor{
 		serviceName: serviceName,
-		requestRates: prom.NewCounterVec(
+		httpRequestRates: prom.NewCounterVec(
 			prom.CounterOpts{
-				Name: "go_kit_request_rates",
-				Help: "Total number of request hit to the server.",
+				Name: "http_request_rates",
+				Help: "Total number of request hit to the http server.",
 			},
-			metricLabels,
+			[]string{"service_name", "call_type", "method", "endpoint", "status_code"},
 		),
-		durationSeconds: prom.NewHistogramVec(
+		httpDurationSeconds: prom.NewHistogramVec(
 			prom.HistogramOpts{
-				Name:    "go_kit_request_duration_seconds",
-				Help:    "Histogram of response durationSeconds (seconds) of request that had been handled by the server.",
+				Name:    "http_request_duration_seconds",
+				Help:    "Histogram of response httpDurationSeconds (seconds) of request that had been handled by the http server.",
 				Buckets: defaultBuckets,
 			},
-			metricLabels,
+			[]string{"service_name", "call_type", "method", "endpoint", "status_code"},
+		),
+		grpcRequestRates: prom.NewCounterVec(
+			prom.CounterOpts{
+				Name: "grpc_request_rates",
+				Help: "Total number of request hit to the gRPC server.",
+			},
+			[]string{"service_name", "call_type", "method", "status_code"},
+		),
+		grpcDurationSeconds: prom.NewHistogramVec(
+			prom.HistogramOpts{
+				Name: "grpc_request_duration_seconds",
+				Help: "Histogram of response httpDurationSeconds (seconds) of request that had been handled by the gRPC server.",
+			},
+			[]string{"service_name", "call_type", "method", "status_code"},
 		),
 	}
 	prom.MustRegister(
-		monitor.requestRates,
-		monitor.durationSeconds,
+		monitor.httpRequestRates,
+		monitor.httpDurationSeconds,
 	)
 	return monitor
 }
 
-func doneHandleRequest(callType, method, endpoint, httpStatusCode string, observeTime float64) {
-	monitor.requestRates.WithLabelValues(monitor.serviceName, callType, method, endpoint, httpStatusCode).Inc()
-	monitor.durationSeconds.WithLabelValues(
-		monitor.serviceName, callType, method, endpoint, httpStatusCode,
-	).Observe(observeTime)
+func doneHTTPHandleRequest(callType, method, endpoint, statusCode string, observeTime float64) {
+	monitor.httpRequestRates.WithLabelValues(monitor.serviceName, callType, method, endpoint, statusCode).Inc()
+	monitor.httpDurationSeconds.WithLabelValues(monitor.serviceName, callType, method, endpoint, statusCode).Observe(observeTime)
+}
+
+func doneGRPCHandleRequest(callType, method, statusCode string, observeTime float64) {
+	monitor.grpcRequestRates.WithLabelValues(monitor.serviceName, callType, method, statusCode).Inc()
+	monitor.grpcDurationSeconds.WithLabelValues(monitor.serviceName, callType, method, statusCode).Observe(observeTime)
 }

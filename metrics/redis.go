@@ -37,7 +37,7 @@ func (metric *redisHook) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
 
 		statusCode := getRedisErrorCode(err)
 
-		doneHandleRequest(OutboundCall, cacheLabelMethod, cmd.Name(), statusCode, elapsedTime)
+		doneHTTPHandleRequest(OutboundCall, cacheLabelMethod, cmd.Name(), statusCode, elapsedTime)
 
 		return err
 	}
@@ -51,7 +51,7 @@ func (metric *redisHook) ProcessPipelineHook(next redis.ProcessPipelineHook) red
 
 		statusCode := getRedisErrorCode(err)
 
-		doneHandleRequest(OutboundCall, cacheLabelMethod, getCmdsName(cmds), statusCode, elapsedTime)
+		doneHTTPHandleRequest(OutboundCall, cacheLabelMethod, getCmdsName(cmds), statusCode, elapsedTime)
 
 		return err
 	}
