@@ -19,9 +19,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build image
-        run: |
-          docker build . --build-arg VERSION="$(git describe --always --tags --dirty)" --tag $IMAGE_NAME --label "runnumber=${GITHUB_RUN_ID}"
 
       #      - uses: knqyf263/trivy-issue-action@v0.0.6
 
@@ -30,9 +27,9 @@ jobs:
         with:
           scan-type: 'fs'
           scan-ref: '.'
-        env:
-          TRIVY_SKIP_DB_UPDATE: true
-          TRIVY_SKIP_JAVA_DB_UPDATE: true
+#        env:
+#          TRIVY_SKIP_DB_UPDATE: true
+#          TRIVY_SKIP_JAVA_DB_UPDATE: true
 
       - name: Check Trivy result file
         run: cat trivy-result.txt

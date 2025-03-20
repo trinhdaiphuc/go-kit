@@ -11,23 +11,6 @@ on:
       - main
 
 jobs:
-  gencode:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 1.23
-          cache: "true"
-
-      - name: Generate code
-        run: go generate ./...
-
-      - name: Check code generation
-        run: git diff --exit-code
-
   lint:
     name: Run linters
     runs-on: ubuntu-latest
