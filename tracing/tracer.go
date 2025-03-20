@@ -2,8 +2,6 @@ package tracing
 
 import (
 	"context"
-	"fmt"
-	"path/filepath"
 	"runtime"
 	"time"
 
@@ -87,19 +85,18 @@ func GetCaller(shift int) (funcName, file string, line int) {
 }
 
 // CreateSpan for each tracing layer
-func CreateSpan(ctx context.Context, spanName string) (context.Context, trace.Span) {
+func CreateSpan(ctx context.Context, spanName string, spanOptions ...trace.SpanStartOption) (context.Context, trace.Span) {
 	funcName, file, line := GetCaller(2)
-	tracer := otel.Tracer(fmt.Sprintf("%s:%d", file, line))
-	ctx, span := tracer.Start(
-		ctx,
-		fmt.Sprintf("%s.%s", spanName, filepath.Base(funcName)),
+	tracer := otel.Tracer(spanName)
+	spanOptions = append(
+		spanOptions,
 		trace.WithAttributes(
 			attribute.String("functionName", funcName),
 			attribute.String("file", file),
 			attribute.Int("line", line),
 		),
-		trace.WithSpanKind(trace.SpanKindServer),
 	)
+	ctx, span := tracer.Start(ctx, spanName, spanOptions...)
 	return ctx, span
 }
 
