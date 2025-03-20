@@ -15,14 +15,16 @@ type Monitor struct {
 }
 
 const (
-	DefaultServiceName  = "default_service"
-	grpcLabelMethod     = "gRPC"
-	producerLabelMethod = "producer"
-	consumerLabelMethod = "consumer"
-	cacheLabelMethod    = "cache"
-	databaseLabelMethod = "database"
-	InboundCall         = "inbound"
-	OutboundCall        = "outbound"
+	DefaultServiceName   = "default_service"
+	grpcLabelMethod      = "gRPC"
+	producerLabelMethod  = "producer"
+	consumerLabelMethod  = "consumer"
+	cacheLabelMethod     = "cache"
+	databaseLabelMethod  = "database"
+	InboundCall          = "inbound"
+	OutboundCall         = "outbound"
+	consumeLabelMethod   = "consume"
+	availableLabelMethod = "available"
 )
 
 var (
