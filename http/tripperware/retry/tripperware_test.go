@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	httptripperware "gitlab.zalopay.vn/bank/go-kit/http/tripperware"
+	httptripperware "github.com/trinhdaiphuc/go-kit/http/tripperware"
 )
 
 func TestTripperware(t *testing.T) {
