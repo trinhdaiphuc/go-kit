@@ -9,40 +9,24 @@ import (
 
 type contextLogKey struct{}
 
-type contextLogValue struct {
-	apiName  string
-	clientID string
-}
-
 var (
 	contextLog = contextLogKey{}
 )
 
-func (c *contextLogValue) ToLoggerFields() []zap.Field {
-	if c == nil {
-		return nil
-	}
-	return []zap.Field{
-		zap.String("api_name", c.apiName),
-		zap.String("client_id", c.clientID),
-	}
+func NewCtxLogger(ctx context.Context, logger Logger) context.Context {
+	return context.WithValue(ctx, contextLog, logger)
 }
 
-func NewCtxLogger(ctx context.Context, apiName, clientID string) context.Context {
-	ctxLogger := &contextLogValue{apiName: apiName, clientID: clientID}
-	return context.WithValue(ctx, contextLog, ctxLogger)
-}
-
-func GetContextLogData(ctx context.Context) []zap.Field {
-	ctxData, ok := ctx.Value(contextLog).(*contextLogValue)
+func GetContextLogData(ctx context.Context) Logger {
+	logger, ok := ctx.Value(contextLog).(Logger)
 	if !ok {
 		return nil
 	}
-	return ctxData.ToLoggerFields()
+	return logger
 }
 
 func NewLogger(ctx context.Context, fields ...zap.Field) Logger {
-	return For(ctx, GetContextLogData).With(fields...)
+	return For(ctx).With(fields...)
 }
 
 func GRPCError(err error) zap.Field {

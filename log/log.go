@@ -67,6 +67,15 @@ func (logger Factory) PrintError(msg string, err *error) {
 
 // For context: add span and trace_id into logger fields
 func (logger Factory) For(ctx context.Context, contextFields ...Fn) Logger {
+	l := GetContextLogData(ctx)
+	if l != nil {
+		var fields []zapcore.Field
+		for _, ctxField := range contextFields {
+			fields = append(fields, ctxField(ctx)...)
+		}
+		return l.With(fields...)
+	}
+
 	if span := trace.SpanFromContext(ctx); span != nil {
 		spanCtx := span.SpanContext()
 		fields := []zapcore.Field{
@@ -91,28 +100,6 @@ func (logger Factory) For(ctx context.Context, contextFields ...Fn) Logger {
 func (logger Factory) With(fields ...zapcore.Field) Logger {
 	return Factory{Logger: logger.Logger.With(fields...)}
 }
-
-// Shorthand functions for logging.
-var (
-	Any        = zap.Any
-	Bool       = zap.Bool
-	Duration   = zap.Duration
-	Float64    = zap.Float64
-	Int        = zap.Int
-	Int64      = zap.Int64
-	Skip       = zap.Skip
-	String     = zap.String
-	Strings    = zap.Strings
-	Stringer   = zap.Stringer
-	Time       = zap.Time
-	Uint       = zap.Uint
-	Uint32     = zap.Uint32
-	Uint64     = zap.Uint64
-	Uintptr    = zap.Uintptr
-	ByteString = zap.ByteString
-	Error      = zap.Error
-	Reflect    = zap.Reflect
-)
 
 // DefaultConsoleEncoderConfig ...
 var DefaultConsoleEncoderConfig = zapcore.EncoderConfig{
