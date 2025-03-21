@@ -33,8 +33,8 @@ type Factory struct {
 type Fn func(ctx context.Context) []zap.Field
 
 type Config struct {
-	Level   string `json:"level" yaml:"level" mapstructure:"level"`
-	Encoder string `json:"encoder" yaml:"encoder" mapstructure:"encoder"`
+	Level   string `json:"level" env:"LEVEL" mapstructure:"level"`
+	Encoder string `json:"encoder" env:"ENCODER" mapstructure:"encoder"`
 }
 
 type Logger interface {
