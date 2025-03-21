@@ -69,7 +69,7 @@ func (consumer *consumer) Start() {
 				if errors.Is(err, sarama.ErrClosedConsumerGroup) {
 					return
 				}
-				log.Bg().Error("Error from consumer", log.Error(err))
+				log.Bg().Error("Error from consumer", zap.Error(err))
 			}
 			// check if context was cancelled, signaling that the consumer should stop
 			if ctx.Err() != nil {

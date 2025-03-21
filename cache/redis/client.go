@@ -55,7 +55,7 @@ func NewClient(cfg *Config) (redis.UniversalClient, func(), error) {
 
 	err := client.Ping(ctx).Err()
 	if err != nil {
-		log.Bg().Error("Ping failed", log.Error(err))
+		log.Bg().Error("Ping failed", zap.Error(err))
 		return nil, nil, err
 	}
 
@@ -72,7 +72,7 @@ func NewClient(cfg *Config) (redis.UniversalClient, func(), error) {
 	cleanup := func() {
 		err := client.Close()
 		if err != nil {
-			log.Bg().Error("Close redis connection failed", log.Error(err))
+			log.Bg().Error("Close redis connection failed", zap.Error(err))
 		}
 	}
 	return client, cleanup, nil
@@ -97,7 +97,7 @@ func NewClusterClient(cfg *Config) (redis.UniversalClient, func(), error) {
 
 	err := client.Ping(ctx).Err()
 	if err != nil {
-		log.Bg().Error("Ping failed", log.Error(err))
+		log.Bg().Error("Ping failed", zap.Error(err))
 		return nil, nil, err
 	}
 
@@ -114,7 +114,7 @@ func NewClusterClient(cfg *Config) (redis.UniversalClient, func(), error) {
 	cleanup := func() {
 		err := client.Close()
 		if err != nil {
-			log.Bg().Error("Close redis connection failed", log.Error(err))
+			log.Bg().Error("Close redis connection failed", zap.Error(err))
 		}
 	}
 

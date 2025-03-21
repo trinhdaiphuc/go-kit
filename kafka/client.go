@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
+	"go.uber.org/zap"
 
 	"github.com/trinhdaiphuc/go-kit/log"
 )
@@ -52,7 +53,7 @@ func NewClient(cfg *Config) (Client, error) {
 	if cfg.UseSSL {
 		tlsClient, err := createTLSConfiguration(cfg)
 		if err != nil {
-			log.Bg().Error("create tls configuration failed: ", log.Error(err))
+			log.Bg().Error("create tls configuration failed: ", zap.Error(err))
 			return nil, err
 		}
 		tlsConfig := TLS{
@@ -83,7 +84,7 @@ func NewClient(cfg *Config) (Client, error) {
 
 	cli, err := newClient(cfg.BrokersArray(), opts...)
 	if err != nil {
-		log.Bg().Error("New kafka client failed", log.Error(err))
+		log.Bg().Error("New kafka client failed", zap.Error(err))
 		return nil, err
 	}
 

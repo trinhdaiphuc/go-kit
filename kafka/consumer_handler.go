@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"github.com/IBM/sarama"
+	"go.uber.org/zap"
 	"golang.org/x/net/context"
 
 	"github.com/trinhdaiphuc/go-kit/log"
@@ -41,8 +42,8 @@ func (c *ConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 		select {
 		case message, ok := <-claim.Messages():
 			if !ok { // check message to prevent panic (ISSUE: https://github.com/IBM/sarama/issues/2477)
-				log.Bg().Warn("Message channel was closed", log.String("topic", claim.Topic()),
-					log.Int32("partition", claim.Partition()), log.Int64("next_offset", claim.HighWaterMarkOffset()))
+				log.Bg().Warn("Message channel was closed", zap.String("topic", claim.Topic()),
+					log.Int32("partition", claim.Partition()), zap.Int64("next_offset", claim.HighWaterMarkOffset()))
 				return nil
 			}
 
