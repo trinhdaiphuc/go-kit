@@ -32,7 +32,7 @@ import (
 // will take precedence.
 func TracerProvider(serviceName, version string) (*tracesdk.TracerProvider, func(), error) {
 	// Create the Otel exporter
-	traceClient := otlptracegrpc.NewClient(otlptracegrpc.WithInsecure(), otlptracegrpc.WithEndpoint("localhost:4317"))
+	traceClient := otlptracegrpc.NewClient(otlptracegrpc.WithInsecure())
 	exp, err := otlptrace.New(context.Background(), traceClient)
 	if err != nil {
 		return nil, nil, err
