@@ -30,9 +30,12 @@ import (
 // environment variable is set, and this option is not passed, that variable
 // value will be used. If both are set, OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
 // will take precedence.
-func TracerProvider(serviceName, version string) (*tracesdk.TracerProvider, func(), error) {
+func TracerProvider(serviceName, version string, opts ...otlptracegrpc.Option) (*tracesdk.TracerProvider, func(), error) {
 	// Create the Otel exporter
-	traceClient := otlptracegrpc.NewClient(otlptracegrpc.WithInsecure())
+	options := []otlptracegrpc.Option{
+		otlptracegrpc.WithInsecure(),
+	}
+	traceClient := otlptracegrpc.NewClient(append(options, opts...)...)
 	exp, err := otlptrace.New(context.Background(), traceClient)
 	if err != nil {
 		return nil, nil, err

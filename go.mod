@@ -16,6 +16,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/hashicorp/go-version v1.7.0
 	github.com/jellydator/ttlcache/v3 v3.3.0
+	github.com/joho/godotenv v1.5.1
 	github.com/k0kubun/pp v3.0.1+incompatible
 	github.com/neo4j/neo4j-go-driver/v5 v5.28.0
 	github.com/prometheus/client_golang v1.20.5

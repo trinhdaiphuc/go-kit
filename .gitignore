@@ -41,6 +41,7 @@ coverage.*
 rspec.xml
 
 bin/
+.env
 
 # Sonar
 .scannerwork/
