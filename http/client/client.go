@@ -42,7 +42,7 @@ type httpClient struct {
 	client *http.Client
 }
 
-func NewClient(serviceName string, opts ...Option) Client {
+func NewHTTPClient(serviceName string, opts ...Option) *http.Client {
 	options := configure(opts...)
 
 	transport := &http.Transport{
@@ -67,8 +67,13 @@ func NewClient(serviceName string, opts ...Option) Client {
 		Transport: otelhttp.NewTransport(transport),
 		Timeout:   options.requestTimeout,
 	}
+
+	return httptripperware.WrapClient(client, options.tripperwares...)
+}
+
+func NewClient(serviceName string, opts ...Option) Client {
 	return &httpClient{
-		client: httptripperware.WrapClient(client, options.tripperwares...),
+		client: NewHTTPClient(serviceName, opts...),
 	}
 }
 
