@@ -369,3 +369,208 @@ func TestDeDuplicate(t *testing.T) {
 		})
 	}
 }
+
+type StructType struct {
+	Name string
+	Age  int
+}
+
+func TestTransformArray(t *testing.T) {
+	type args[A comparable, E comparable] struct {
+		a  []A
+		fn func(ele A) E
+	}
+	type testCase[A comparable, E comparable] struct {
+		name string
+		args args[A, E]
+		want []E
+	}
+	tests := []testCase[StructType, string]{
+		{
+			name: "Transform to array name successfully",
+			args: args[StructType, string]{
+				a: []StructType{
+					{Name: "John", Age: 1},
+					{Name: "Alice", Age: 2},
+				},
+				fn: func(ele StructType) string {
+					return ele.Name
+				},
+			},
+			want: []string{"John", "Alice"},
+		},
+		{
+			name: "Transform array empty",
+			args: args[StructType, string]{
+				a: []StructType{},
+				fn: func(ele StructType) string {
+					return ele.Name
+				},
+			},
+			want: []string{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, TransformArray(tt.args.a, tt.args.fn), "TransformArray(%v, %v)", tt.args.a, tt.args.fn)
+		})
+	}
+}
+
+func TestContainsFunc(t *testing.T) {
+	tests := []struct {
+		name string
+		a    []int
+		fn   func(ele int) bool
+		want bool
+	}{
+		{
+			name: "Element exists",
+			a:    []int{1, 2, 3, 4, 5},
+			fn: func(ele int) bool {
+				return ele == 3
+			},
+			want: true,
+		},
+		{
+			name: "Element does not exist",
+			a:    []int{1, 2, 3, 4, 5},
+			fn: func(ele int) bool {
+				return ele == 6
+			},
+			want: false,
+		},
+		{
+			name: "Empty slice",
+			a:    []int{},
+			fn: func(ele int) bool {
+				return ele == 1
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ContainsFunc(tt.a, tt.fn)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestFindFunc(t *testing.T) {
+	type args[T comparable] struct {
+		a  []T
+		fn func(ele T) bool
+	}
+	type testCase[T comparable] struct {
+		name  string
+		args  args[T]
+		wantT T
+	}
+	tests := []testCase[*StructType]{
+		{
+			name: "Find element successfully",
+			args: args[*StructType]{
+				a: []*StructType{
+					{Name: "John", Age: 1},
+					{Name: "Alice", Age: 2},
+					{Name: "Bob", Age: 3},
+				},
+				fn: func(ele *StructType) bool {
+					return ele.Name == "Alice"
+				},
+			},
+			wantT: &StructType{Name: "Alice", Age: 2},
+		},
+		{
+			name: "Element does not exist",
+			args: args[*StructType]{
+				a: []*StructType{
+					{Name: "John", Age: 1},
+					{Name: "Alice", Age: 2},
+					{Name: "Bob", Age: 3},
+				},
+				fn: func(ele *StructType) bool {
+					return ele.Name == "Tom"
+				},
+			},
+			wantT: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.wantT, FindFunc(tt.args.a, tt.args.fn), "FindFunc(%v, %v)", tt.args.a, tt.args.fn)
+		})
+	}
+}
+
+func TestDeDuplicateFunc(t *testing.T) {
+	type args[T comparable] struct {
+		a  []T
+		fn func(ele T) string
+	}
+	type testCase[T comparable] struct {
+		name string
+		args args[T]
+		want []T
+	}
+	tests := []testCase[StructType]{
+		{
+			name: "De-duplicate successfully",
+			args: args[StructType]{
+				a: []StructType{
+					{Name: "John", Age: 1},
+					{Name: "Alice", Age: 2},
+					{Name: "John", Age: 3},
+				},
+				fn: func(ele StructType) string { return ele.Name },
+			},
+			want: []StructType{
+				{Name: "John", Age: 1},
+				{Name: "Alice", Age: 2},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, DeDuplicateFunc(tt.args.a, tt.args.fn), "DeDuplicateFunc(%v, %v)", tt.args.a, tt.args.fn)
+		})
+	}
+}
+
+func TestFilter(t *testing.T) {
+	type args[T comparable] struct {
+		a  []T
+		fn func(ele T) bool
+	}
+	type testCase[T comparable] struct {
+		name string
+		args args[T]
+		want []T
+	}
+	tests := []testCase[StructType]{
+		{
+			name: "Filter successfully",
+			args: args[StructType]{
+				a: []StructType{
+					{Name: "John", Age: 1},
+					{Name: "Alice", Age: 2},
+					{Name: "Bob", Age: 3},
+				},
+				fn: func(ele StructType) bool {
+					return ele.Age > 1
+				},
+			},
+			want: []StructType{
+				{Name: "Alice", Age: 2},
+				{Name: "Bob", Age: 3},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, Filter(tt.args.a, tt.args.fn), "Filter(%v, %v)", tt.args.a, tt.args.fn)
+		})
+	}
+}
