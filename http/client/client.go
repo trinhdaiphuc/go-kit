@@ -64,7 +64,7 @@ func NewHTTPClient(serviceName string, opts ...Option) *http.Client {
 	}
 
 	client := &http.Client{
-		Transport: otelhttp.NewTransport(transport),
+		Transport: otelhttp.NewTransport(transport, otelhttp.WithServerName(serviceName), otelhttp.WithPublicEndpoint()),
 		Timeout:   options.requestTimeout,
 	}
 
