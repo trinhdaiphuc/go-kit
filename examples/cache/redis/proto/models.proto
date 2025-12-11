@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package models;
+
+option go_package = "github.com/trinhdaiphuc/go-kit/examples/cache/redis/proto";
+
+message SmallStruct {
+  string field1 = 1;
+  int64 field2 = 2;
+  bool field3 = 3;
+  string field4 = 4;
+  int64 field5 = 5;
+}
+
+message MediumStruct {
+  string field1 = 1;
+  int64 field2 = 2;
+  bool field3 = 3;
+  string field4 = 4;
+  int64 field5 = 5;
+  string field6 = 6;
+  int64 field7 = 7;
+  bool field8 = 8;
+  double field9 = 9;
+  string field10 = 10;
+}
+
+message LargeStruct {
+  string field1 = 1;
+  int64 field2 = 2;
+  bool field3 = 3;
+  string field4 = 4;
+  int64 field5 = 5;
+  string field6 = 6;
+  int64 field7 = 7;
+  bool field8 = 8;
+  double field9 = 9;
+  string field10 = 10;
+  string field11 = 11;
+  int64 field12 = 12;
+  bool field13 = 13;
+  string field14 = 14;
+  int64 field15 = 15;
+  string field16 = 16;
+  int64 field17 = 17;
+  bool field18 = 18;
+  string field19 = 19;
+  int64 field20 = 20;
+  string field21 = 21;
+  int64 field22 = 22;
+  bool field23 = 23;
+  string field24 = 24;
+  int64 field25 = 25;
+}
+
+message SubStruct {
+  string sub_field1 = 1;
+  int64 sub_field2 = 2;
+}
+
+message LargeNestedStruct {
+  string field1 = 1;
+  int64 field2 = 2;
+  bool field3 = 3;
+  string field4 = 4;
+  int64 field5 = 5;
+  SubStruct nested1 = 6;
+  SubStruct nested2 = 7;
+  SubStruct nested3 = 8;
+  SubStruct nested4 = 9;
+  SubStruct nested5 = 10;
+  SubStruct nested6 = 11;
+  SubStruct nested7 = 12;
+  SubStruct nested8 = 13;
+  SubStruct nested9 = 14;
+  SubStruct nested10 = 15;
+}

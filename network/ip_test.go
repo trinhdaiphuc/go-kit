@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -16,7 +17,7 @@ func TestLocalIP(t *testing.T) {
 
 	server := http.Server{}
 	go func() {
-		if err := server.Serve(listener); err != nil {
+		if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			t.Fatalf("serve: %v\n", err)
 		}
 	}()
@@ -28,5 +29,5 @@ func TestLocalIP(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("local ip: %s", ip)
+	server.Shutdown(context.Background())
 }

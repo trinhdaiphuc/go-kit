@@ -22,8 +22,8 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: v1.60
-          args: --issues-exit-code=0
+          version: v1.64.7
+          args: --issues-exit-code=0 --out-format code-climate:gl-code-quality-report.json,line-number
 
   test:
     name: Run test
@@ -35,9 +35,6 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: 1.23
-
-      - name: Build
-        run: go build -v ./...
 
       - name: Test
         run: go test -v ./...
