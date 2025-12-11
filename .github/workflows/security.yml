@@ -29,7 +29,7 @@ jobs:
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
           output: trivy-result.txt
-        env:
+#        env:
 #          TRIVY_SKIP_DB_UPDATE: true
 #          TRIVY_SKIP_JAVA_DB_UPDATE: true
 
