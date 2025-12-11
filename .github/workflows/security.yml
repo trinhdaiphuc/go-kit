@@ -23,13 +23,13 @@ jobs:
       - name: Scan image with Trivy
         uses: aquasecurity/trivy-action@0.33.1
         with:
-          scan-type: 'rootfs'
+          scan-type: 'fs'
           scan-ref: '.'
-          ignore-unfixed: true
           format: table
           output: trivy-result.txt
           severity: HIGH,CRITICAL
           scanners: "vuln"
+          exit-code: 0
         env:
           TRIVY_SKIP_DB_UPDATE: true
           TRIVY_SKIP_JAVA_DB_UPDATE: true
