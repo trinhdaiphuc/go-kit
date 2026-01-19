@@ -19,7 +19,7 @@ type Data struct {
 
 func newRedisClientMock[K comparable, V any](loader cache.Loader[K, V]) (cache.Store[K, V], redismock.ClientMock) {
 	client, mock := redismock.NewClientMock()
-	repo := NewRedisCache[K, V](client, WithLoader[K, V](loader), WithPrefix[K, V]("test"))
+	repo := NewRedisCache[K, V](client, WithLoader[K, V](loader), WithPrefix[K, V]("test"), WithTTL[K, V](0))
 	return repo, mock
 }
 
@@ -36,6 +36,10 @@ func (l *loaderSuccess) LoadAll(ctx context.Context, c cache.Store[string, *Data
 	}, nil
 }
 
+func (l *loaderSuccess) BulkLoad(ctx context.Context, c cache.Store[string, *Data], keys []string) (map[string]*Data, error) {
+	return nil, nil
+}
+
 type loaderFailed struct{}
 
 func (l *loaderFailed) Load(ctx context.Context, c cache.Store[string, *Data], key string) (*Data, error) {
@@ -43,6 +47,10 @@ func (l *loaderFailed) Load(ctx context.Context, c cache.Store[string, *Data], k
 }
 
 func (l *loaderFailed) LoadAll(ctx context.Context, c cache.Store[string, *Data], key string) (map[string]*Data, error) {
+	return nil, errors.New("failed")
+}
+
+func (l *loaderFailed) BulkLoad(ctx context.Context, c cache.Store[string, *Data], keys []string) (map[string]*Data, error) {
 	return nil, errors.New("failed")
 }
 
@@ -200,8 +208,8 @@ func Test_redisCache_Set(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo, repoMock := newRedisClientMock[string, *Data](nil)
 			tt.mock(repoMock)
-			err := repo.Set(tt.args.ctx, tt.args.key, tt.args.data, 0)
-			tt.wantErr(t, err, "Set(%v, %v, %v, 0)", tt.args.ctx, tt.args.key, tt.args.data)
+			err := repo.Set(tt.args.ctx, tt.args.key, tt.args.data)
+			tt.wantErr(t, err, "Set(%v, %v, %v)", tt.args.ctx, tt.args.key, tt.args.data)
 		})
 	}
 }
@@ -279,11 +287,11 @@ func Test_redisCache_SetNX(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo, repoMock := newRedisClientMock[string, *Data](nil)
 			tt.mock(repoMock)
-			got, err := repo.SetNX(tt.args.ctx, tt.args.key, tt.args.data, 0)
-			if !tt.wantErr(t, err, "SetNX(%v, %v, %v, 0)", tt.args.ctx, tt.args.key, tt.args.data) {
+			got, err := repo.SetNX(tt.args.ctx, tt.args.key, tt.args.data)
+			if !tt.wantErr(t, err, "SetNX(%v, %v, %v)", tt.args.ctx, tt.args.key, tt.args.data) {
 				return
 			}
-			assert.Equalf(t, tt.want, got, "SetNX(%v, %v, %v, 0)", tt.args.ctx, tt.args.key, tt.args.data)
+			assert.Equalf(t, tt.want, got, "SetNX(%v, %v, %v)", tt.args.ctx, tt.args.key, tt.args.data)
 		})
 	}
 }
@@ -541,11 +549,12 @@ func Test_redisCache_HGet(t *testing.T) {
 			args: args{
 				ctx:    context.Background(),
 				key:    "key",
-				field:  "field",
+				field:  "field1",
 				loader: &loaderSuccess{},
 			},
 			mock: func(mock redismock.ClientMock) {
-				mock.ExpectHGet("test:key", "field").RedisNil()
+				mock.ExpectHGet("test:key", "field1").RedisNil()
+				mock.ExpectHLen("test:key").SetVal(0) // hash doesn't exist, trigger loader
 			},
 			want:    value,
 			wantErr: assert.NoError,
@@ -555,11 +564,12 @@ func Test_redisCache_HGet(t *testing.T) {
 			args: args{
 				ctx:    context.Background(),
 				key:    "key",
-				field:  "field",
+				field:  "field1",
 				loader: &loaderFailed{},
 			},
 			mock: func(mock redismock.ClientMock) {
-				mock.ExpectHGet("test:key", "field").RedisNil()
+				mock.ExpectHGet("test:key", "field1").RedisNil()
+				mock.ExpectHLen("test:key").SetVal(0) // hash doesn't exist, trigger loader
 			},
 			want:    nil,
 			wantErr: assert.Error,

@@ -42,9 +42,13 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockClient) Delete(ctx context.Context, url string, headers httpclient.Headers, request any) ([]byte, int, error) {
+func (m *MockClient) Delete(ctx context.Context, url string, request any, opts ...httpclient.RequestOption) ([]byte, int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", ctx, url, headers, request)
+	varargs := []any{ctx, url, request}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Delete", varargs...)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(int)
 	ret2, _ := ret[2].(error)
@@ -52,15 +56,20 @@ func (m *MockClient) Delete(ctx context.Context, url string, headers httpclient.
 }
 
 // Delete indicates an expected call of Delete.
-func (mr *MockClientMockRecorder) Delete(ctx, url, headers, request any) *gomock.Call {
+func (mr *MockClientMockRecorder) Delete(ctx, url, request any, opts ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockClient)(nil).Delete), ctx, url, headers, request)
+	varargs := append([]any{ctx, url, request}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockClient)(nil).Delete), varargs...)
 }
 
 // Get mocks base method.
-func (m *MockClient) Get(ctx context.Context, url string, headers httpclient.Headers, request any) ([]byte, int, error) {
+func (m *MockClient) Get(ctx context.Context, url string, request any, opts ...httpclient.RequestOption) ([]byte, int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", ctx, url, headers, request)
+	varargs := []any{ctx, url, request}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Get", varargs...)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(int)
 	ret2, _ := ret[2].(error)
@@ -68,15 +77,20 @@ func (m *MockClient) Get(ctx context.Context, url string, headers httpclient.Hea
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockClientMockRecorder) Get(ctx, url, headers, request any) *gomock.Call {
+func (mr *MockClientMockRecorder) Get(ctx, url, request any, opts ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockClient)(nil).Get), ctx, url, headers, request)
+	varargs := append([]any{ctx, url, request}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockClient)(nil).Get), varargs...)
 }
 
 // Post mocks base method.
-func (m *MockClient) Post(ctx context.Context, url string, headers httpclient.Headers, data any) ([]byte, int, error) {
+func (m *MockClient) Post(ctx context.Context, url string, data any, opts ...httpclient.RequestOption) ([]byte, int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Post", ctx, url, headers, data)
+	varargs := []any{ctx, url, data}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Post", varargs...)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(int)
 	ret2, _ := ret[2].(error)
@@ -84,15 +98,20 @@ func (m *MockClient) Post(ctx context.Context, url string, headers httpclient.He
 }
 
 // Post indicates an expected call of Post.
-func (mr *MockClientMockRecorder) Post(ctx, url, headers, data any) *gomock.Call {
+func (mr *MockClientMockRecorder) Post(ctx, url, data any, opts ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Post", reflect.TypeOf((*MockClient)(nil).Post), ctx, url, headers, data)
+	varargs := append([]any{ctx, url, data}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Post", reflect.TypeOf((*MockClient)(nil).Post), varargs...)
 }
 
 // Put mocks base method.
-func (m *MockClient) Put(ctx context.Context, url string, headers httpclient.Headers, data any) ([]byte, int, error) {
+func (m *MockClient) Put(ctx context.Context, url string, data any, opts ...httpclient.RequestOption) ([]byte, int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Put", ctx, url, headers, data)
+	varargs := []any{ctx, url, data}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Put", varargs...)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(int)
 	ret2, _ := ret[2].(error)
@@ -100,7 +119,8 @@ func (m *MockClient) Put(ctx context.Context, url string, headers httpclient.Hea
 }
 
 // Put indicates an expected call of Put.
-func (mr *MockClientMockRecorder) Put(ctx, url, headers, data any) *gomock.Call {
+func (mr *MockClientMockRecorder) Put(ctx, url, data any, opts ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockClient)(nil).Put), ctx, url, headers, data)
+	varargs := append([]any{ctx, url, data}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockClient)(nil).Put), varargs...)
 }

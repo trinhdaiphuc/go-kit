@@ -22,8 +22,8 @@ type User struct {
 
 func main() {
 	cli := cachelocal.NewClient[int, *User](
-		cachelocal.WithTTL[int, *User](5*time.Second),
-		cachelocal.WithLoader[int, *User](cacheloader.NewSuppressedLoader(&loader{})),
+		cachelocal.WithTTL[int, *User](5*time.Minute),
+		cachelocal.WithLoader[int, *User](cacheloader.NewSuppressedLoader[int, *User](&loader{})),
 	)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -45,6 +45,16 @@ func main() {
 		}()
 	}
 
+	err := cli.Delete(ctx, 1)
+	if err != nil {
+		log.Bg().Error("Delete user failed", zap.Error(err))
+	}
+
+	_, err = cli.Get(ctx, 1)
+	if err != nil {
+		log.Bg().Error("Get user failed", zap.Error(err))
+	}
+
 	<-ctx.Done()
 }
 
@@ -64,5 +74,9 @@ func (l *loader) Load(ctx context.Context, c cache.Store[int, *User], key int) (
 }
 
 func (l *loader) LoadAll(ctx context.Context, c cache.Store[int, *User], key int) (map[int]*User, error) {
+	return nil, nil
+}
+
+func (l *loader) BulkLoad(ctx context.Context, c cache.Store[int, *User], keys []int) (map[int]*User, error) {
 	return nil, nil
 }

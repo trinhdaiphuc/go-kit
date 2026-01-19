@@ -23,7 +23,9 @@ func main() {
 		panic(err)
 	}
 
-	_, _, err = tracing.TracerProvider("test", "1.0.0")
+	_, _, err = tracing.TracerProvider("test", "1.0.0", &tracing.OtelExporter{
+		OTLPEndpoint: "localhost:4317",
+	})
 	if err != nil {
 		panic(err)
 	}

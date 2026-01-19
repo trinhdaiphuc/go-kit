@@ -25,10 +25,6 @@ func userKeyFunc(key string) string {
 	return "user:" + key
 }
 
-const (
-	ttl = 5 * time.Second
-)
-
 func main() {
 	cfg := &cacheredis.Config{
 		Addresses: "localhost:6379",
@@ -85,7 +81,7 @@ func (l *loader) Load(ctx context.Context, c cache.Store[string, *User], key str
 
 	time.Sleep(50 * time.Millisecond) // simulate slow loading
 
-	err := c.Set(ctx, key, user, ttl)
+	err := c.Set(ctx, key, user)
 	if err != nil {
 		return nil, err
 	}
@@ -117,4 +113,8 @@ func (l *loader) LoadAll(ctx context.Context, c cache.Store[string, *User], key 
 	}
 
 	return users, nil
+}
+
+func (l *loader) BulkLoad(ctx context.Context, c cache.Store[string, *User], keys []string) (map[string]*User, error) {
+	return nil, nil
 }

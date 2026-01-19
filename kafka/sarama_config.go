@@ -150,7 +150,7 @@ const (
 	defaultFlushFrequency = 100 * time.Millisecond
 	defaultFlushBytes     = 64 * 1024
 
-	defaultClientID = "bank-mapping"
+	defaultClientID = "go-kit"
 )
 
 // DefaultConfig creates a new config used per default
@@ -158,8 +158,6 @@ func DefaultConfig() *sarama.Config {
 	metrics.UseNilMetrics = true
 
 	config := sarama.NewConfig()
-
-	config.Version = sarama.V2_0_0_0
 
 	// consumer configuration
 	config.Consumer.Return.Errors = true

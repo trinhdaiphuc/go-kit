@@ -43,6 +43,59 @@ func (c *redisCache[K, V]) Get(ctx context.Context, key K) (value V, err error) 
 	return
 }
 
+func (c *redisCache[K, V]) BulkGet(ctx context.Context, keys []K) (map[K]V, error) {
+	if len(keys) == 0 {
+		return nil, nil
+	}
+
+	keyVals := make([]string, 0, len(keys))
+	for _, key := range keys {
+		keyVals = append(keyVals, c.encodeKey(key))
+	}
+
+	result, err := c.client.MGet(ctx, keyVals...).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	rs := make(map[K]V, len(result))
+	for i, data := range result {
+		if data == nil {
+			continue
+		}
+
+		var value V
+		err = c.unmarshal(data.(string), &value)
+		if err != nil {
+			log.Bg().Error("Unmarshal error", zap.Error(err))
+			continue
+		}
+		rs[c.decodeHashKey(keyVals[i])] = value
+	}
+
+	if len(rs) != len(keys) {
+		// If some keys are not found, we will try to load them
+		missingKeys := make([]K, 0, len(keys)-len(rs))
+		for _, key := range keys {
+			if _, found := rs[key]; !found {
+				missingKeys = append(missingKeys, key)
+			}
+		}
+
+		if len(missingKeys) > 0 {
+			missingValues, err := c.bulkLoad(ctx, missingKeys)
+			if err != nil {
+				return nil, err
+			}
+			for k, v := range missingValues {
+				rs[k] = v
+			}
+		}
+	}
+
+	return rs, nil
+}
+
 func (c *redisCache[K, V]) load(ctx context.Context, key K) (value V, err error) {
 	if c.opts == nil || c.opts.Loader == nil {
 		return value, cache.ErrorKeyNotFound
@@ -69,20 +122,33 @@ func (c *redisCache[K, V]) loadAll(ctx context.Context, key K) (map[K]V, error) 
 	return value, nil
 }
 
-func (c *redisCache[K, V]) Set(ctx context.Context, key K, value V, expireSecond time.Duration) error {
+func (c *redisCache[K, V]) bulkLoad(ctx context.Context, keys []K) (map[K]V, error) {
+	if c.opts == nil || c.opts.Loader == nil {
+		return nil, cache.ErrorKeyNotFound
+	}
+
+	value, err := c.opts.Loader.BulkLoad(ctx, c, keys)
+	if err != nil {
+		return value, err
+	}
+
+	return value, nil
+}
+
+func (c *redisCache[K, V]) Set(ctx context.Context, key K, value V) error {
 	data, err := c.marshal(value)
 	if err != nil {
 		return err
 	}
-	return c.client.Set(ctx, c.encodeKey(key), data, expireSecond).Err()
+	return c.client.Set(ctx, c.encodeKey(key), data, c.opts.TTL).Err()
 }
 
-func (c *redisCache[K, V]) SetNX(ctx context.Context, key K, value V, expireSecond time.Duration) (bool, error) {
+func (c *redisCache[K, V]) SetNX(ctx context.Context, key K, value V) (bool, error) {
 	data, err := c.marshal(value)
 	if err != nil {
 		return false, err
 	}
-	return c.client.SetNX(ctx, c.encodeKey(key), data, expireSecond).Result()
+	return c.client.SetNX(ctx, c.encodeKey(key), data, c.opts.TTL).Result()
 }
 
 func (c *redisCache[K, V]) Delete(ctx context.Context, keys ...K) error {
@@ -120,15 +186,30 @@ func (c *redisCache[K, V]) HSet(ctx context.Context, key K, keyVals ...cache.Key
 
 func (c *redisCache[K, V]) HGet(ctx context.Context, key, field K) (value V, err error) {
 	data, err := c.client.HGet(ctx, c.encodeKey(key), c.opts.KeyEncoder(field)).Result()
-	if err != nil {
-		if errors.Is(err, redis.Nil) {
-			return c.load(ctx, field)
-		}
+	if err == nil {
+		err = c.unmarshal(data, &value)
+		return
+	}
+
+	if !errors.Is(err, redis.Nil) {
 		return value, err
 	}
 
-	err = c.unmarshal(data, &value)
-	return
+	// If the hash exists but the field does not exist, we will try to load all fields
+	if c.client.HLen(ctx, c.encodeKey(key)).Val() > 0 {
+		return value, cache.ErrorKeyNotFound
+	}
+
+	allValues, err := c.loadAll(ctx, field)
+	if err != nil {
+		return value, err
+	}
+
+	if val, ok := allValues[field]; ok {
+		return val, nil
+	}
+
+	return value, cache.ErrorKeyNotFound
 }
 
 func (c *redisCache[K, V]) HGetAll(ctx context.Context, key K) (map[K]V, error) {

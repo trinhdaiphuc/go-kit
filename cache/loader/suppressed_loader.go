@@ -95,6 +95,38 @@ func (l *SuppressedLoader[K, V]) LoadAll(ctx context.Context, c cache.Store[K, V
 	return value, nil
 }
 
+// BulkLoad executes a custom item retrieval logic and returns the map of items that
+// are associated with the keys.
+// It returns nil if the items are not found/valid.
+// It also ensures that only one execution of the wrapped Loader's BulkLoad
+// method is in-flight for a given set of keys at a time.
+func (l *SuppressedLoader[K, V]) BulkLoad(ctx context.Context, c cache.Store[K, V], keys []K) (map[K]V, error) {
+	strKey := defaultKeyEncoder(keys)
+
+	res, err, _ := l.group.Do(strKey, func() (interface{}, error) {
+		v, err := l.loader.BulkLoad(ctx, c, keys)
+		if err != nil {
+			return nil, err
+		}
+
+		return v, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if res == nil {
+		return nil, nil
+	}
+
+	value, ok := res.(map[K]V)
+	if !ok {
+		return nil, fmt.Errorf("invalid type %T, expected %T", res, value)
+	}
+
+	return value, nil
+}
+
 // NewSuppressedLoader creates a new instance of suppressed loader.
 func NewSuppressedLoader[K comparable, V any](loader cache.Loader[K, V]) cache.Loader[K, V] {
 	return &SuppressedLoader[K, V]{

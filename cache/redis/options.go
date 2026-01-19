@@ -3,6 +3,7 @@ package cacheredis
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/goccy/go-json"
 	"google.golang.org/protobuf/proto"
@@ -24,6 +25,7 @@ type Options[K comparable, V any] struct {
 	MarshalValue   Marshaller
 	UnmarshalValue Unmarshaler
 	Loader         cache.Loader[K, V]
+	TTL            time.Duration
 }
 
 func newDefaultOption[K comparable, V any]() *Options[K, V] {
@@ -32,6 +34,7 @@ func newDefaultOption[K comparable, V any]() *Options[K, V] {
 		KeyDecoder:     defaultKeyDecoder,
 		MarshalValue:   json.Marshal,
 		UnmarshalValue: json.Unmarshal,
+		TTL:            5 * time.Minute,
 	}
 }
 
@@ -70,6 +73,12 @@ func WithLoader[K comparable, V any](loader cache.Loader[K, V]) Option[K, V] {
 func WithPrefix[K comparable, V any](prefix string) Option[K, V] {
 	return func(o *Options[K, V]) {
 		o.Prefix = prefix
+	}
+}
+
+func WithTTL[K comparable, V any](ttl time.Duration) Option[K, V] {
+	return func(o *Options[K, V]) {
+		o.TTL = ttl
 	}
 }
 

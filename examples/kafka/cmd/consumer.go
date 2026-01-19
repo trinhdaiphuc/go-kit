@@ -47,7 +47,9 @@ func NewConsumer() (kafka.Consumer, error) {
 
 	if useTracing {
 		fmt.Println("Using tracing")
-		_, shutdown, err := tracing.TracerProvider("kafka-consumer", "1.0.0")
+		_, shutdown, err := tracing.TracerProvider("kafka-consumer", "1.0.0", &tracing.OtelExporter{
+			OTLPEndpoint: "localhost:4317",
+		})
 		if err != nil {
 			panic(err)
 			return nil, err

@@ -13,6 +13,9 @@ test: ## Run go test for whole project
 coverage: ## Run go test for whole project
 	go test -v -race -covermode=atomic -coverprofile=coverage.out ./...
 
+coverage-vscode: coverage ## Run go test for whole project
+	gocover-cobertura < coverage.out > coverage.xml
+
 lint: ## Run linter
 	@golangci-lint run ./...
 

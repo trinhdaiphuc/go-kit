@@ -4,21 +4,24 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/trinhdaiphuc/go-kit/breaker"
 	httptripperware "github.com/trinhdaiphuc/go-kit/http/tripperware"
 	tripperwareretry "github.com/trinhdaiphuc/go-kit/http/tripperware/retry"
 )
 
 type Options struct {
-	proxyURL            *url.URL
-	maxConnsPerHost     int
-	maxIdleConns        int
-	maxIdleConnsPerHost int
-	keepAliveTimeout    time.Duration
-	requestTimeout      time.Duration
-	idleConnTimeout     time.Duration
-	retry               []tripperwareretry.Option
-	tripperwares        []httptripperware.Tripperware
-	isEnablePrometheus  bool
+	proxyURL             *url.URL
+	maxConnsPerHost      int
+	maxIdleConns         int
+	maxIdleConnsPerHost  int
+	keepAliveTimeout     time.Duration
+	requestTimeout       time.Duration
+	idleConnTimeout      time.Duration
+	retry                []tripperwareretry.Option
+	tripperwares         []httptripperware.Tripperware
+	isEnablePrometheus   bool
+	circuitBreakerOpts   []breaker.CircuitBreakerOptions
+	enableCircuitBreaker bool
 }
 
 type Option func(*Options)
@@ -84,5 +87,13 @@ func WithRetryOptions(options ...tripperwareretry.Option) Option {
 func WithTripperwares(tripperwares ...httptripperware.Tripperware) Option {
 	return func(o *Options) {
 		o.tripperwares = tripperwares
+	}
+}
+
+// WithCircuitBreaker enables the circuit breaker for the HTTP client.
+func WithCircuitBreaker(opts ...breaker.CircuitBreakerOptions) Option {
+	return func(o *Options) {
+		o.enableCircuitBreaker = true
+		o.circuitBreakerOpts = opts
 	}
 }

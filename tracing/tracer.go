@@ -9,49 +9,91 @@ import (
 	jaegerprob "go.opentelemetry.io/contrib/propagators/jaeger"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.18.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"go.opentelemetry.io/otel/trace"
 )
+
+const (
+	SpanKindKey = attribute.Key("span.kind")
+)
+
+var (
+	SchedulerSpanKind = SpanKindKey.String("scheduler")
+)
+
+type Jaeger struct {
+	AgentHost string `json:"agent_host,omitempty" mapstructure:"agent_host"`
+	AgentPort string `json:"agent_port,omitempty" mapstructure:"agent_port"`
+	Endpoint  string `json:"endpoint,omitempty" mapstructure:"endpoint"`
+	User      string `json:"user,omitempty" mapstructure:"user"`
+	Password  string `json:"password,omitempty" mapstructure:"password"`
+}
+
+type OtelExporter struct {
+	Jaeger       *Jaeger `json:"jaeger,omitempty" mapstructure:"jaeger"`
+	OTLPEndpoint string  `json:"otlp_endpoint,omitempty" mapstructure:"otlp_endpoint"`
+}
 
 // TracerProvider returns an OpenTelemetry TracerProvider configured to use
 // the Otel exporter that will send spans to the provided url. The returned
 // TracerProvider will also use a Resource configured with all the information
 // about the application.
-//
-// By default, if an environment variable is not set, and this option is not
-// passed, "localhost:4317" will be used.
-//
-// If the OTEL_EXPORTER_OTLP_ENDPOINT or OTEL_EXPORTER_OTLP_METRICS_ENDPOINT
-// environment variable is set, and this option is not passed, that variable
-// value will be used. If both are set, OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
-// will take precedence.
-func TracerProvider(serviceName, version string, opts ...otlptracegrpc.Option) (*tracesdk.TracerProvider, func(), error) {
-	// Create the Otel exporter
-	options := []otlptracegrpc.Option{
-		otlptracegrpc.WithInsecure(),
+func TracerProvider(serviceName, version string, cfg *OtelExporter) (trace.TracerProvider, func(), error) {
+	var (
+		exporter tracesdk.SpanExporter
+		err      error
+		ctx      = context.Background()
+	)
+
+	if cfg.Jaeger != nil {
+		exporter, err = jaeger.New(
+			// This will use the following environment variables for configuration if no explicit option is provided:
+			jaeger.WithAgentEndpoint(
+				jaeger.WithAgentHost(cfg.Jaeger.AgentHost),
+				jaeger.WithAgentPort(cfg.Jaeger.AgentPort),
+			),
+		)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		// Create the Otel exporter
+		traceClient := otlptracegrpc.NewClient(
+			otlptracegrpc.WithInsecure(),
+			otlptracegrpc.WithEndpoint(cfg.OTLPEndpoint),
+		)
+		exporter, err = otlptrace.New(ctx, traceClient)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
-	traceClient := otlptracegrpc.NewClient(append(options, opts...)...)
-	exp, err := otlptrace.New(context.Background(), traceClient)
+
+	res, err := resource.New(
+		ctx,
+		resource.WithFromEnv(),
+		resource.WithProcess(),
+		resource.WithTelemetrySDK(),
+		resource.WithHost(),
+		resource.WithAttributes(
+			semconv.ServiceNameKey.String(serviceName),
+			semconv.ServiceVersion(version),
+		),
+	)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	tp := tracesdk.NewTracerProvider(
 		// Always be sure to batch in production.
-		tracesdk.WithBatcher(exp),
+		tracesdk.WithBatcher(exporter),
 		// Record information about this application in a Resource.
-		tracesdk.WithResource(
-			resource.NewWithAttributes(
-				semconv.SchemaURL,
-				semconv.ServiceNameKey.String(serviceName),
-				semconv.ServiceVersionKey.String(version),
-			),
-		),
+		tracesdk.WithResource(res),
 	)
 
 	// Register our TracerProvider as the global so any imported
@@ -65,7 +107,6 @@ func TracerProvider(serviceName, version string, opts ...otlptracegrpc.Option) (
 	)
 	otel.SetTextMapPropagator(pb)
 
-	// Cleanly shutdown and flush telemetry when the application exits.
 	cleanup := func() {
 		// Do not make the application hang when it is shutdown.
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)

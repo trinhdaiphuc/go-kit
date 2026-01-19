@@ -57,7 +57,9 @@ func WithProxyClient(proxy Proxy) Option {
 
 func WithProducerRetry(retry ProducerRetry) Option {
 	return func(c *sarama.Config) {
-		c.Producer.Retry = retry
+		c.Producer.Retry.Max = retry.Max
+		c.Producer.Retry.Backoff = retry.Backoff
+		c.Producer.Retry.BackoffFunc = retry.BackoffFunc
 	}
 }
 
@@ -72,7 +74,8 @@ func WithProducerPartitioner(partitioner sarama.PartitionerConstructor) Option {
 
 func WithConsumerRetry(retry ConsumerRetry) Option {
 	return func(c *sarama.Config) {
-		c.Consumer.Retry = retry
+		c.Consumer.Retry.Backoff = retry.Backoff
+		c.Consumer.Retry.BackoffFunc = retry.BackoffFunc
 	}
 }
 
@@ -123,5 +126,19 @@ func WithProducerInterceptor(interceptors ...sarama.ProducerInterceptor) Option 
 func WithConsumerInterceptor(interceptors ...sarama.ConsumerInterceptor) Option {
 	return func(c *sarama.Config) {
 		c.Consumer.Interceptors = interceptors
+	}
+}
+
+func WithIdempotentProducer() Option {
+	return func(c *sarama.Config) {
+		c.Producer.Idempotent = true
+		c.Producer.RequiredAcks = sarama.WaitForAll
+		c.Net.MaxOpenRequests = 1
+	}
+}
+
+func WithCompression(compression sarama.CompressionCodec) Option {
+	return func(c *sarama.Config) {
+		c.Producer.Compression = compression
 	}
 }

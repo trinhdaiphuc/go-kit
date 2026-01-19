@@ -66,6 +66,23 @@ func (r *RedSyncLoader[K, V]) LoadAll(ctx context.Context, c cache.Store[K, V], 
 	return r.loader.LoadAll(ctx, c, key)
 }
 
+func (r *RedSyncLoader[K, V]) BulkLoad(ctx context.Context, c cache.Store[K, V], keys []K) (map[K]V, error) {
+	mutex := r.redLock.GetLock(r.loadKey(defaultKeyEncoder(keys)), r.expiry)
+	err := mutex.TryLockContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("acquire lock failed: %w", err)
+	}
+
+	defer func() {
+		ok, errUnlock := mutex.Unlock()
+		if !ok || errUnlock != nil {
+			log.For(ctx).Error("Unlock failed", zap.Error(err))
+		}
+	}()
+
+	return r.loader.BulkLoad(ctx, c, keys)
+}
+
 func defaultKeyEncoder(key any) string {
 	return fmt.Sprint(key)
 }

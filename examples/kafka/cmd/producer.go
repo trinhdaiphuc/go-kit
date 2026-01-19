@@ -42,7 +42,9 @@ func NewProducer() (kafka.Producer, func(), error) {
 
 	if useTracing {
 		fmt.Println("Using tracing")
-		_, shutdown, err := tracing.TracerProvider("kafka-producer", "1.0.0")
+		_, shutdown, err := tracing.TracerProvider("kafka-producer", "1.0.0", &tracing.OtelExporter{
+			OTLPEndpoint: "localhost:4317",
+		})
 		if err != nil {
 			panic(err)
 			return nil, nil, err

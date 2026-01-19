@@ -3,6 +3,7 @@ package log
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -33,8 +34,16 @@ type Factory struct {
 type Fn func(ctx context.Context) []zap.Field
 
 type Config struct {
-	Level   string `json:"level" env:"LEVEL" mapstructure:"level"`
-	Encoder string `json:"encoder" env:"ENCODER" mapstructure:"encoder"`
+	Encoder   string          `mapstructure:"encoder" json:"encoder"`
+	Sampling  *SamplingConfig `mapstructure:"sampling" json:"sampling"`
+	LevelFrom string          `mapstructure:"level_from" json:"level_from"`
+	LevelTo   string          `mapstructure:"level_to" json:"level_to"`
+}
+
+type SamplingConfig struct {
+	Initial    int           `mapstructure:"initial" json:"initial"`
+	Thereafter int           `mapstructure:"thereafter" json:"thereafter"`
+	Interval   time.Duration `mapstructure:"interval" json:"interval"`
 }
 
 type Logger interface {
@@ -100,6 +109,28 @@ func (logger Factory) For(ctx context.Context, contextFields ...Fn) Logger {
 func (logger Factory) With(fields ...zapcore.Field) Logger {
 	return Factory{Logger: logger.Logger.With(fields...)}
 }
+
+// Shorthand functions for logging.
+var (
+	Any        = zap.Any
+	Bool       = zap.Bool
+	Duration   = zap.Duration
+	Float64    = zap.Float64
+	Int        = zap.Int
+	Int64      = zap.Int64
+	Skip       = zap.Skip
+	String     = zap.String
+	Strings    = zap.Strings
+	Stringer   = zap.Stringer
+	Time       = zap.Time
+	Uint       = zap.Uint
+	Uint32     = zap.Uint32
+	Uint64     = zap.Uint64
+	Uintptr    = zap.Uintptr
+	ByteString = zap.ByteString
+	Error      = zap.Error
+	Reflect    = zap.Reflect
+)
 
 // DefaultConsoleEncoderConfig ...
 var DefaultConsoleEncoderConfig = zapcore.EncoderConfig{
@@ -202,49 +233,60 @@ func ShortColorCallerEncoder(caller zapcore.EntryCaller, enc zapcore.PrimitiveAr
 	enc.AppendString(callerStr)
 }
 
-func newLogger(cfg *Config, opts ...zap.Option) *zap.Logger {
-	enabler, err := zap.ParseAtomicLevel(cfg.Level)
+func newCore(cfg *Config) (zapcore.Core, error) {
+	encoder := DefaultConsoleEncoder()
+	if cfg.Encoder != ConsoleEncoderName {
+		encoder = zapcore.NewJSONEncoder(StructureEncoderConfig)
+	}
+
+	levelFrom, err := parseLevelOrDefault(cfg.LevelFrom, zapcore.DebugLevel)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-
-	loggerConfig := zap.Config{
-		Level:       enabler,
-		Development: false,
-		Sampling: &zap.SamplingConfig{
-			Initial:    100,
-			Thereafter: 100,
-		},
-		Encoding:         "json",
-		EncoderConfig:    StructureEncoderConfig,
-		OutputPaths:      []string{"stderr"},
-		ErrorOutputPaths: []string{"stderr"},
-	}
-
-	if cfg.Encoder == ConsoleEncoderName {
-		loggerConfig = zap.Config{
-			Level:            enabler,
-			Development:      false,
-			Encoding:         ConsoleEncoderName,
-			EncoderConfig:    DefaultConsoleEncoderConfig,
-			OutputPaths:      []string{"stderr"},
-			ErrorOutputPaths: []string{"stderr"},
-		}
-		Object = func(key string, val interface{}) zap.Field {
-			return zap.Stringer(key, Dump(val))
-		}
-	}
-	stacktraceLevel := zap.NewAtomicLevelAt(zapcore.PanicLevel)
-
-	opts = append(opts, zap.AddStacktrace(stacktraceLevel))
-	logger, err := loggerConfig.Build(opts...)
+	levelTo, err := parseLevelOrDefault(cfg.LevelTo, zapcore.FatalLevel)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
+
+	core := zapcore.NewCore(encoder, os.Stderr, zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
+		return lvl >= levelFrom && lvl <= levelTo
+	}))
+
+	if cfg.Sampling != nil {
+		core = zapcore.NewSamplerWithOptions(
+			core,
+			cfg.Sampling.Interval,
+			cfg.Sampling.Initial,
+			cfg.Sampling.Thereafter,
+		)
+	}
+
+	return core, nil
+}
+
+func NewCore(cfgs ...*Config) zapcore.Core {
+	if len(cfgs) == 0 {
+		panic("no log config provided")
+	}
+
+	cores := make([]zapcore.Core, 0, len(cfgs))
+	for _, cfg := range cfgs {
+		core, err := newCore(cfg)
+		if err != nil {
+			panic(err)
+		}
+		cores = append(cores, core)
+	}
+
+	return zapcore.NewTee(cores...)
+}
+
+func newLogger(core zapcore.Core, opts ...zap.Option) *zap.Logger {
+	logger := zap.New(core, opts...)
 	return logger
 }
 
-func New(cfg *Config) *Factory {
+func New(cfg ...*Config) *Factory {
 	once.Do(func() {
 		err := zap.RegisterEncoder(ConsoleEncoderName, func(cfg zapcore.EncoderConfig) (zapcore.Encoder, error) {
 			return NewConsoleEncoder(cfg), nil
@@ -252,9 +294,10 @@ func New(cfg *Config) *Factory {
 		if err != nil {
 			panic(err)
 		}
+		core := NewCore(cfg...)
 		instance = &Factory{
-			Logger: newLogger(cfg, zap.AddCaller()),
-			ll:     newLogger(cfg, zap.AddCallerSkip(1), zap.AddCaller()),
+			Logger: newLogger(core, zap.AddCaller()),
+			ll:     newLogger(core, zap.AddCallerSkip(1), zap.AddCaller()),
 		}
 	})
 
@@ -265,8 +308,8 @@ func New(cfg *Config) *Factory {
 func Bg() Logger {
 	if instance == nil {
 		New(&Config{
-			Level:   "info",
-			Encoder: "json",
+			LevelFrom: "info",
+			Encoder:   "json",
 		})
 	}
 	return instance
@@ -278,9 +321,16 @@ func Bg() Logger {
 func For(ctx context.Context, contextFields ...Fn) Logger {
 	if instance == nil {
 		New(&Config{
-			Level:   "info",
-			Encoder: "json",
+			LevelFrom: "info",
+			Encoder:   "json",
 		})
 	}
 	return instance.For(ctx, contextFields...)
+}
+
+func parseLevelOrDefault(levelStr string, defaultLevel zapcore.Level) (zapcore.Level, error) {
+	if levelStr == "" {
+		return defaultLevel, nil
+	}
+	return zapcore.ParseLevel(levelStr)
 }

@@ -31,6 +31,6 @@ func GraphqlInterceptor(ctx context.Context, next graphql.ResponseHandler) *grap
 		status = "500"
 	}
 
-	doneHTTPHandleRequest(InboundCall, method, endpoint, status, latency.Seconds())
+	doneHandleRequest(InboundCall, method, endpoint, status, status, latency.Seconds())
 	return resp
 }

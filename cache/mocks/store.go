@@ -42,6 +42,21 @@ func (m *MockStore[K, V]) EXPECT() *MockStoreMockRecorder[K, V] {
 	return m.recorder
 }
 
+// BulkGet mocks base method.
+func (m *MockStore[K, V]) BulkGet(ctx context.Context, keys []K) (map[K]V, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BulkGet", ctx, keys)
+	ret0, _ := ret[0].(map[K]V)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// BulkGet indicates an expected call of BulkGet.
+func (mr *MockStoreMockRecorder[K, V]) BulkGet(ctx, keys any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BulkGet", reflect.TypeOf((*MockStore[K, V])(nil).BulkGet), ctx, keys)
+}
+
 // Close mocks base method.
 func (m *MockStore[K, V]) Close() {
 	m.ctrl.T.Helper()
@@ -200,32 +215,32 @@ func (mr *MockStoreMockRecorder[K, V]) Ping(ctx any) *gomock.Call {
 }
 
 // Set mocks base method.
-func (m *MockStore[K, V]) Set(ctx context.Context, key K, value V, expireSecond time.Duration) error {
+func (m *MockStore[K, V]) Set(ctx context.Context, key K, value V) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Set", ctx, key, value, expireSecond)
+	ret := m.ctrl.Call(m, "Set", ctx, key, value)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Set indicates an expected call of Set.
-func (mr *MockStoreMockRecorder[K, V]) Set(ctx, key, value, expireSecond any) *gomock.Call {
+func (mr *MockStoreMockRecorder[K, V]) Set(ctx, key, value any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockStore[K, V])(nil).Set), ctx, key, value, expireSecond)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockStore[K, V])(nil).Set), ctx, key, value)
 }
 
 // SetNX mocks base method.
-func (m *MockStore[K, V]) SetNX(ctx context.Context, key K, value V, expireSecond time.Duration) (bool, error) {
+func (m *MockStore[K, V]) SetNX(ctx context.Context, key K, value V) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetNX", ctx, key, value, expireSecond)
+	ret := m.ctrl.Call(m, "SetNX", ctx, key, value)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // SetNX indicates an expected call of SetNX.
-func (mr *MockStoreMockRecorder[K, V]) SetNX(ctx, key, value, expireSecond any) *gomock.Call {
+func (mr *MockStoreMockRecorder[K, V]) SetNX(ctx, key, value any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetNX", reflect.TypeOf((*MockStore[K, V])(nil).SetNX), ctx, key, value, expireSecond)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetNX", reflect.TypeOf((*MockStore[K, V])(nil).SetNX), ctx, key, value)
 }
 
 // TTL mocks base method.
@@ -265,6 +280,21 @@ func NewMockLoader[K comparable, V any](ctrl *gomock.Controller) *MockLoader[K, 
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockLoader[K, V]) EXPECT() *MockLoaderMockRecorder[K, V] {
 	return m.recorder
+}
+
+// BulkLoad mocks base method.
+func (m *MockLoader[K, V]) BulkLoad(ctx context.Context, c cache.Store[K, V], keys []K) (map[K]V, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BulkLoad", ctx, c, keys)
+	ret0, _ := ret[0].(map[K]V)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// BulkLoad indicates an expected call of BulkLoad.
+func (mr *MockLoaderMockRecorder[K, V]) BulkLoad(ctx, c, keys any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BulkLoad", reflect.TypeOf((*MockLoader[K, V])(nil).BulkLoad), ctx, c, keys)
 }
 
 // Load mocks base method.

@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/IBM/sarama"
-	"go.uber.org/zap"
 
 	"github.com/trinhdaiphuc/go-kit/log"
 )
@@ -31,9 +30,9 @@ func NewProducerClient(cfg *Config, client Client) (Producer, func(), error) {
 	cleanup := func() {
 		err = client.Close()
 		if err != nil {
-			log.Bg().Error("Close kafka consumer client failed", zap.Error(err))
+			log.Bg().Error("Close kafka producer client failed", log.Error(err))
 		} else {
-			log.Bg().Info("Close kafka consumer client succeeded")
+			log.Bg().Info("Close kafka producer client succeeded")
 		}
 	}
 

@@ -37,6 +37,10 @@ func (l *loaderSuccess) LoadAll(ctx context.Context, c cache.Store[string, *Data
 	}, nil
 }
 
+func (l *loaderSuccess) BulkLoad(ctx context.Context, c cache.Store[string, *Data], keys []string) (map[string]*Data, error) {
+	return nil, nil
+}
+
 type loaderFailed struct{}
 
 func (l *loaderFailed) Load(ctx context.Context, c cache.Store[string, *Data], key string) (*Data, error) {
@@ -44,6 +48,10 @@ func (l *loaderFailed) Load(ctx context.Context, c cache.Store[string, *Data], k
 }
 
 func (l *loaderFailed) LoadAll(ctx context.Context, c cache.Store[string, *Data], key string) (map[string]*Data, error) {
+	return nil, errors.New("failed")
+}
+
+func (l *loaderFailed) BulkLoad(ctx context.Context, c cache.Store[string, *Data], keys []string) (map[string]*Data, error) {
 	return nil, errors.New("failed")
 }
 
