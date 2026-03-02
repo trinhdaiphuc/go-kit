@@ -23,7 +23,6 @@ jobs:
         uses: golangci/golangci-lint-action@v8
         with:
           version: v2.10.0
-          args: --issues-exit-code=0 --out-format code-climate:gl-code-quality-report.json,line-number
 
   test:
     name: Run test

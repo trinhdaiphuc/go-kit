@@ -2,12 +2,16 @@ version: "2"
 
 run:
   timeout: 5m
+  tests: false
+  issues-exit-code: 0
 
 output:
   formats:
-    text:
-      print-issued-lines: true
-      print-linter-name: true
+    - format: colored-line-number
+    - format: code-climate
+      path: gl-code-quality-report.json
+  print-issued-lines: true
+  print-linter-name: true
 
 linters:
   default: none
@@ -35,15 +39,12 @@ linters:
       disabled-checks:
         - commentFormatting
     gocognit:
-      # minimal code complexity to report (we recommend 10-20, using 40 for now)
+      # minimal code complexity to report (we recommend 10-20, using 40 here)
       min-complexity: 40
     errcheck:
       check-blank: true
       check-type-assertions: true
   exclusions:
-    # Exclude test files from linting
-    paths:
-      - ".*_test\\.go$"
     rules:
       - linters:
           - staticcheck
