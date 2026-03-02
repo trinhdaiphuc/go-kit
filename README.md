@@ -31,6 +31,7 @@ go get -u github.com/trinhdaiphuc/go-kit
 | `http/tripperware/` | HTTP RoundTripper middleware (retry with backoff) |
 | `kafka/` | Kafka producer/consumer using IBM Sarama with SASL/TLS support |
 | `log/` | Structured logging using Zap with OpenTelemetry trace context |
+| `mailbox/` | Microsoft Outlook mailbox client via Microsoft Graph API (ROPC OAuth2) |
 | `metrics/` | Prometheus metrics for HTTP, gRPC, Kafka, Redis, and circuit breaker |
 | `network/` | Network utilities (IP address) |
 | `queue/redis-stream/` | Redis Stream queue worker |
@@ -163,13 +164,126 @@ func main() {
 
 	producer.Publish(context.Background(), []byte("key"), []byte("message"))
 
-	// Consumer
+	// Single-message consumer
 	consumer, err := kafka.NewConsumer(
 		kafka.WithBrokers([]string{"localhost:9092"}),
 		kafka.WithTopic("my-topic"),
 		kafka.WithGroupID("my-group"),
 	)
 	defer consumer.Close()
+}
+```
+
+### Kafka Batch Consumer
+
+The batch consumer buffers messages and flushes the batch when either
+`batchSize` messages accumulate **or** `delayInterval` elapses — whichever
+comes first.
+
+```go
+package main
+
+import (
+	"context"
+	"time"
+
+	"github.com/IBM/sarama"
+	"github.com/trinhdaiphuc/go-kit/kafka"
+)
+
+func main() {
+	cfg := &kafka.Config{
+		Brokers: []string{"localhost:9092"},
+		Topics:  []string{"my-topic"},
+		GroupID: "my-group",
+	}
+
+	consumer, err := kafka.NewBatchConsumer(
+		cfg,
+		func(ctx context.Context, msgs []*sarama.ConsumerMessage) []kafka.MessageResult {
+			results := make([]kafka.MessageResult, len(msgs))
+			for i, m := range msgs {
+				// process m …
+				results[i] = kafka.MessageResult{Offset: m.Offset}
+			}
+			return results
+		},
+		kafka.DefaultBatchSize,    // flush at 256 messages
+		100*time.Millisecond,      // or every 100 ms
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	go consumer.Start()
+	defer consumer.Close()
+}
+
+### Mailbox
+
+Client for reading Microsoft Outlook mailboxes via the [Microsoft Graph API](https://learn.microsoft.com/en-us/graph/api/resources/mail-api-overview).
+Authentication uses the OAuth2 Resource Owner Password Credentials (ROPC) flow.
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+	"time"
+
+	"github.com/trinhdaiphuc/go-kit/mailbox"
+)
+
+func main() {
+	cfg := &mailbox.Config{
+		Username:     "user@example.com",
+		Password:     "s3cr3t",
+		ClientID:     "azure-client-id",
+		ClientSecret: "azure-client-secret", // optional for public clients
+		TenantID:     "azure-tenant-id",
+	}
+
+	// Create client — all options are optional.
+	client, err := mailbox.NewMailboxClient(cfg,
+		mailbox.WithTimeout(15*time.Second),         // custom timeout
+		mailbox.WithHTTPClient(&http.Client{}),      // or bring your own client
+		mailbox.WithContext(context.Background()),    // base context stored on client
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ctx := context.Background()
+
+	// List recent messages (supports OData $filter).
+	messages, err := client.GetMessages(ctx, 10, "")
+
+	// Only unread messages.
+	unread, err := client.GetUnreadMessages(ctx, 10)
+
+	// Full message by ID.
+	msg, err := client.GetMessage(ctx, messages[0].ID)
+	fmt.Println(msg.Subject, msg.Body.Content)
+
+	// Attachments for a message.
+	attachments, err := client.GetAttachments(ctx, messages[0].ID)
+	for _, att := range attachments {
+		_ = mailbox.SaveAttachment(att, "/tmp/"+att.Name)
+	}
+
+	// Mark as read.
+	_ = client.MarkAsRead(ctx, messages[0].ID)
+
+	// Poll for new messages.
+	_ = client.WatchMailbox(ctx, 30*time.Second, func(m mailbox.Message) {
+		fmt.Println("new message:", m.Subject)
+	})
+
+	_ = unread
+	_ = err
 }
 ```
 
@@ -341,7 +455,8 @@ Working examples are located in the `examples/` directory:
 
 - `examples/cache/` - Local and Redis cache usage
 - `examples/grpc/` - gRPC server
-- `examples/kafka/` - Kafka producer and consumer
+- `examples/kafka/` - Kafka producer, single-message consumer, and batch consumer
+- `examples/main.go` - Microsoft Outlook mailbox client (reads messages and downloads attachments)
 
 ## Development
 
