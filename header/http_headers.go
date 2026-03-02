@@ -35,3 +35,5 @@ func BasicAuth(username, password string) string {
 func BearerAuth(token string) string {
 	return "Bearer " + token
 }
+
+type Headers map[string]string
