@@ -7,22 +7,20 @@ run:
 
 output:
   formats:
-    - format: colored-line-number
-    - format: code-climate
+    text:
+      print-issued-lines: true
+      print-linter-name: true
+    code-climate:
       path: gl-code-quality-report.json
-  print-issued-lines: true
-  print-linter-name: true
 
 linters:
   default: none
   enable:
     - bodyclose
     - errcheck
-    - gosimple
     - govet
     - ineffassign
     - staticcheck
-    - typecheck
     - unparam
     - sqlclosecheck
     - unconvert
