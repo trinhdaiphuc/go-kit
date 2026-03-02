@@ -27,9 +27,9 @@ jobs:
           severity: HIGH,CRITICAL
           scanners: "vuln"
           exit-code: 0
-        env:
-          TRIVY_SKIP_DB_UPDATE: true
-          TRIVY_SKIP_JAVA_DB_UPDATE: true
+        # env:
+        #   TRIVY_SKIP_DB_UPDATE: true
+        #   TRIVY_SKIP_JAVA_DB_UPDATE: true
 
       - name: Check Trivy result file
         run: cat trivy-result.txt
