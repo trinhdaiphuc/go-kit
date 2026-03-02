@@ -175,7 +175,7 @@ func TestAttribute(t *testing.T) {
 	tests := []struct {
 		name  string
 		key   string
-		value interface{}
+		value any
 		want  attribute.KeyValue
 	}{
 		{

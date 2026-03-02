@@ -8,9 +8,10 @@ import (
 
 	goccy "github.com/goccy/go-json"
 	"github.com/redis/go-redis/v9"
-	pb "github.com/trinhdaiphuc/go-kit/examples/cache/redis/proto"
 	"github.com/vmihailenco/msgpack/v5"
 	"google.golang.org/protobuf/proto"
+
+	pb "examples/cache/redis/proto"
 )
 
 // Struct definitions moved to models.go
@@ -753,32 +754,40 @@ func (s *ProtoLargeNestedStruct) UnmarshalBinary(data []byte) error {
 // --- Proto Initialization ---
 
 func initProtoSmall() ProtoSmallStruct {
-	return ProtoSmallStruct{pb.SmallStruct{
-		Field1: "value1", Field2: 2, Field3: true, Field4: "value4", Field5: 5,
-	}}
+	return ProtoSmallStruct{
+		pb.SmallStruct{
+			Field1: "value1", Field2: 2, Field3: true, Field4: "value4", Field5: 5,
+		},
+	}
 }
 
 func initProtoMedium() ProtoMediumStruct {
-	return ProtoMediumStruct{pb.MediumStruct{
-		Field1: "value1", Field2: 2, Field3: true, Field4: "value4", Field5: 5,
-		Field6: "value6", Field7: 7, Field8: true, Field9: 9.9, Field10: "value10",
-	}}
+	return ProtoMediumStruct{
+		pb.MediumStruct{
+			Field1: "value1", Field2: 2, Field3: true, Field4: "value4", Field5: 5,
+			Field6: "value6", Field7: 7, Field8: true, Field9: 9.9, Field10: "value10",
+		},
+	}
 }
 
 func initProtoLarge() ProtoLargeStruct {
-	return ProtoLargeStruct{pb.LargeStruct{
-		Field1: "value1", Field2: 2, Field3: true, Field4: "value4", Field5: 5,
-		Field6: "value6", Field7: 7, Field8: true, Field9: 9.9, Field10: "value10",
-		Field11: "value11", Field12: 12, Field13: true, Field14: "value14", Field15: 15,
-		Field16: "value16", Field17: 17, Field18: true, Field19: "value19", Field20: 20,
-		Field21: "value21", Field22: 22, Field23: true, Field24: "value24", Field25: 25,
-	}}
+	return ProtoLargeStruct{
+		pb.LargeStruct{
+			Field1: "value1", Field2: 2, Field3: true, Field4: "value4", Field5: 5,
+			Field6: "value6", Field7: 7, Field8: true, Field9: 9.9, Field10: "value10",
+			Field11: "value11", Field12: 12, Field13: true, Field14: "value14", Field15: 15,
+			Field16: "value16", Field17: 17, Field18: true, Field19: "value19", Field20: 20,
+			Field21: "value21", Field22: 22, Field23: true, Field24: "value24", Field25: 25,
+		},
+	}
 }
 
 func initProtoLargeNested() ProtoLargeNestedStruct {
-	s := ProtoLargeNestedStruct{pb.LargeNestedStruct{
-		Field1: "value1", Field2: 2, Field3: true, Field4: "value4", Field5: 5,
-	}}
+	s := ProtoLargeNestedStruct{
+		pb.LargeNestedStruct{
+			Field1: "value1", Field2: 2, Field3: true, Field4: "value4", Field5: 5,
+		},
+	}
 	// Populate nested
 	sub := &pb.SubStruct{SubField1: "sub1", SubField2: 100}
 	s.Nested1 = sub

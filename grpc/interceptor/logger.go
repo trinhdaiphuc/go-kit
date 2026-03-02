@@ -27,7 +27,7 @@ func UnaryServerLoggerInterceptor(conf *LoggerMiddlewareConfig) grpc.UnaryServer
 		skipPaths[path] = true
 	}
 
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 		_, method := SplitGRPCMethodName(info.FullMethod)
 		logger := log.NewLogger(ctx, zap.String("method", method))
 		if conf.Context != nil {
@@ -64,7 +64,7 @@ func UnaryServerLoggerInterceptor(conf *LoggerMiddlewareConfig) grpc.UnaryServer
 }
 
 func UnaryClientLoggerInterceptor() grpc.UnaryClientInterceptor {
-	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	return func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		serviceName, methodName := SplitGRPCMethodName(method)
 		startTime := time.Now()
 

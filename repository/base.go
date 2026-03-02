@@ -15,7 +15,7 @@ type QueryParams struct {
 
 type Clause func(tx *gorm.DB)
 
-type Model interface{}
+type Model any
 
 type Base[M Model, ID comparable] interface {
 	Create(ctx context.Context, i *M) (*M, error)
@@ -24,7 +24,7 @@ type Base[M Model, ID comparable] interface {
 	GetByID(ctx context.Context, id ID) (*M, error)
 	UpdateByID(ctx context.Context, id ID, i *M, clauses ...Clause) (rowsAffected int64, err error)
 	Updates(ctx context.Context, i *M, clauses ...Clause) (rowsAffected int64, err error)
-	UpdateColumns(ctx context.Context, id ID, columns map[string]interface{}, clauses ...Clause) (rowsAffected int64, err error)
+	UpdateColumns(ctx context.Context, id ID, columns map[string]any, clauses ...Clause) (rowsAffected int64, err error)
 	Count(ctx context.Context, clauses ...Clause) (rowsAffected int64, err error)
 	DeleteByID(ctx context.Context, id ID) (success bool, err error)
 	Delete(ctx context.Context, i *M) (success bool, err error)
@@ -73,7 +73,7 @@ func (b *baseRepository[M, ID]) Updates(ctx context.Context, o *M, clauses ...Cl
 	return result.RowsAffected, nil
 }
 
-func (b *baseRepository[M, ID]) UpdateColumns(ctx context.Context, id ID, columns map[string]interface{}, clauses ...Clause) (rowsAffected int64, err error) {
+func (b *baseRepository[M, ID]) UpdateColumns(ctx context.Context, id ID, columns map[string]any, clauses ...Clause) (rowsAffected int64, err error) {
 	var o *M
 	tx := b.db.WithContext(ctx).Model(&o).Where("id = ?", id)
 	for _, f := range clauses {

@@ -21,7 +21,7 @@ func NewSingleFlightLoader[K comparable, V any](loader cache.Loader[K, V]) *Sing
 }
 
 func (s *SingleFlightLoader[K, V]) Load(ctx context.Context, c cache.Store[K, V], key K) (value V, err error) {
-	out, err, _ := s.Group.Do(defaultKeyEncoder(key), func() (interface{}, error) {
+	out, err, _ := s.Group.Do(defaultKeyEncoder(key), func() (any, error) {
 		return s.loader.Load(ctx, c, key)
 	})
 	if err != nil {
@@ -32,7 +32,7 @@ func (s *SingleFlightLoader[K, V]) Load(ctx context.Context, c cache.Store[K, V]
 }
 
 func (s *SingleFlightLoader[K, V]) LoadAll(ctx context.Context, c cache.Store[K, V], key K) (map[K]V, error) {
-	out, err, _ := s.Group.Do(defaultKeyEncoder(key), func() (interface{}, error) {
+	out, err, _ := s.Group.Do(defaultKeyEncoder(key), func() (any, error) {
 		return s.loader.LoadAll(ctx, c, key)
 	})
 	if err != nil {
@@ -43,7 +43,7 @@ func (s *SingleFlightLoader[K, V]) LoadAll(ctx context.Context, c cache.Store[K,
 }
 
 func (s *SingleFlightLoader[K, V]) BulkLoad(ctx context.Context, c cache.Store[K, V], keys []K) (map[K]V, error) {
-	out, err, _ := s.Group.Do(defaultKeyEncoder(keys), func() (interface{}, error) {
+	out, err, _ := s.Group.Do(defaultKeyEncoder(keys), func() (any, error) {
 		return s.loader.BulkLoad(ctx, c, keys)
 	})
 	if err != nil {

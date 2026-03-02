@@ -184,7 +184,7 @@ func RFC3339NanoTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 }
 
 // Interface ...
-func Interface(key string, val interface{}) zapcore.Field {
+func Interface(key string, val any) zapcore.Field {
 	if val, ok := val.(fmt.Stringer); ok {
 		return zap.Stringer(key, val)
 	}
@@ -205,7 +205,7 @@ func Int32(key string, val int32) zapcore.Field {
 var Object = zap.Any
 
 type dd struct {
-	v interface{}
+	v any
 }
 
 func (d dd) String() string {
@@ -213,7 +213,7 @@ func (d dd) String() string {
 }
 
 // Dump renders object for debugging
-func Dump(v interface{}) fmt.Stringer {
+func Dump(v any) fmt.Stringer {
 	return dd{v}
 }
 

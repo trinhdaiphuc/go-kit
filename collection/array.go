@@ -1,5 +1,7 @@
 package collection
 
+import "slices"
+
 type Number interface {
 	int | int8 | int16 | int32 | int64 | uint | uint8 | uint16 | uint32 | uint64
 }
@@ -28,21 +30,11 @@ func FindFunc[T comparable](a []T, fn func(ele T) bool) (t T) {
 
 // Contains tells whether a contains x.
 func Contains[T comparable](a []T, x T) bool {
-	for _, n := range a {
-		if x == n {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(a, x)
 }
 
 func ContainsFunc[T comparable](a []T, fn func(ele T) bool) bool {
-	for _, n := range a {
-		if fn(n) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(a, fn)
 }
 
 func MapToArray[T comparable](a map[string]T) []T {

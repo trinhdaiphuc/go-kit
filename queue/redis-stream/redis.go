@@ -162,7 +162,7 @@ func (w *Worker) Shutdown() error {
 	return nil
 }
 
-func (w *Worker) queue(data interface{}) error {
+func (w *Worker) queue(data any) error {
 	ctx := context.Background()
 
 	// Publish a message.
@@ -181,7 +181,7 @@ func (w *Worker) Queue(task core.TaskMessage) error {
 		return queue.ErrQueueShutdown
 	}
 
-	return w.queue(map[string]interface{}{"body": bytesconv.BytesToStr(task.Bytes())})
+	return w.queue(map[string]any{"body": bytesconv.BytesToStr(task.Bytes())})
 }
 
 // Run start the worker

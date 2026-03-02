@@ -7,28 +7,36 @@ import (
 // Monitor represents a collection of monitor to be registered on a
 // Prometheus monitor registry for a http server.
 type Monitor struct {
-	serviceName         string
-	requestRates        *prom.CounterVec
-	durationSeconds     *prom.HistogramVec
-	circuitBreakerState *prom.GaugeVec
-	requestCounter      *prom.CounterVec
-	successCounter      *prom.CounterVec
-	failureCounter      *prom.CounterVec
+	serviceName           string
+	requestRates          *prom.CounterVec
+	durationSeconds       *prom.HistogramVec
+	clientRequestRates    *prom.CounterVec
+	clientDurationSeconds *prom.HistogramVec
+	circuitBreakerState   *prom.GaugeVec
+	requestCounter        *prom.CounterVec
+	successCounter        *prom.CounterVec
+	failureCounter        *prom.CounterVec
 }
 
 const (
-	DefaultServiceName  = "default_service"
+	defaultServiceName = "default_service"
+)
+
+const (
 	grpcLabelMethod     = "gRPC"
 	producerLabelMethod = "producer"
 	consumerLabelMethod = "consumer"
 	cacheLabelMethod    = "cache"
 	databaseLabelMethod = "database"
-	InboundCall         = "inbound"
-	OutboundCall        = "outbound"
+)
+
+const (
+	ServerCall = "server"
+	ClientCall = "client"
 )
 
 var (
-	metricLabels   = []string{"service_name", "call_type", "method", "endpoint", "status_code", "http_status_code"}
+	metricLabels   = []string{"service_name", "method", "endpoint", "status_code", "http_status_code"}
 	defaultBuckets = []float64{.005, .01, .02, .03, .05, .1, .2, .3, .5, 1, 2, 3, 5, 10}
 	monitor        *Monitor
 )
@@ -36,22 +44,37 @@ var (
 // NewServerMonitor returns a new ServerMetrics object.
 func NewServerMonitor(serviceName string) *Monitor {
 	if serviceName == "" {
-		serviceName = DefaultServiceName
+		serviceName = defaultServiceName
 	}
 
 	monitor = &Monitor{
 		serviceName: serviceName,
 		requestRates: prom.NewCounterVec(
 			prom.CounterOpts{
-				Name: "bank_request_rates",
+				Name: "request_rates",
 				Help: "Total number of request hit to the server.",
 			},
 			metricLabels,
 		),
 		durationSeconds: prom.NewHistogramVec(
 			prom.HistogramOpts{
-				Name:    "bank_request_duration_seconds",
+				Name:    "request_duration_seconds",
 				Help:    "Histogram of response durationSeconds (seconds) of request that had been handled by the server.",
+				Buckets: defaultBuckets,
+			},
+			metricLabels,
+		),
+		clientRequestRates: prom.NewCounterVec(
+			prom.CounterOpts{
+				Name: "client_request_rates",
+				Help: "Total number of request hit to the client.",
+			},
+			metricLabels,
+		),
+		clientDurationSeconds: prom.NewHistogramVec(
+			prom.HistogramOpts{
+				Name:    "client_request_duration_seconds",
+				Help:    "Histogram of response durationSeconds (seconds) of request that had been handled by the client.",
 				Buckets: defaultBuckets,
 			},
 			metricLabels,
@@ -97,6 +120,11 @@ func NewServerMonitor(serviceName string) *Monitor {
 }
 
 func doneHandleRequest(callType, method, endpoint, statusCode, httpStatusCode string, observeTime float64) {
-	monitor.requestRates.WithLabelValues(monitor.serviceName, callType, method, endpoint, statusCode, httpStatusCode).Inc()
-	monitor.durationSeconds.WithLabelValues(monitor.serviceName, callType, method, endpoint, statusCode, httpStatusCode).Observe(observeTime)
+	if callType == ServerCall {
+		monitor.requestRates.WithLabelValues(monitor.serviceName, method, endpoint, statusCode, httpStatusCode).Inc()
+		monitor.durationSeconds.WithLabelValues(monitor.serviceName, method, endpoint, statusCode, httpStatusCode).Observe(observeTime)
+	} else {
+		monitor.clientRequestRates.WithLabelValues(monitor.serviceName, method, endpoint, statusCode, httpStatusCode).Inc()
+		monitor.clientDurationSeconds.WithLabelValues(monitor.serviceName, method, endpoint, statusCode, httpStatusCode).Observe(observeTime)
+	}
 }

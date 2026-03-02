@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/IBM/sarama"
 	"go.uber.org/zap"
@@ -50,6 +51,35 @@ func NewConsumer(cfg *Config, handler ConsumerHandlerFn) (Consumer, error) {
 	return NewConsumerClient(cfg, client, handler)
 }
 
+// NewBatchConsumerClient creates a batch consumer using an existing Client.
+// See NewConsumerBatchHandler for batchSize and delayInterval semantics.
+func NewBatchConsumerClient(cfg *Config, client Client, handler ConsumerBatchHandlerFn, batchSize int, delayInterval time.Duration) (Consumer, error) {
+	cli, err := sarama.NewConsumerGroupFromClient(cfg.GroupID, client)
+	if err != nil {
+		return nil, fmt.Errorf("error creating the batch consumer client: %w", err)
+	}
+
+	return &consumer{
+		cli:             cli,
+		cfg:             cfg,
+		consumerHandler: NewConsumerBatchHandler(handler, batchSize, delayInterval),
+		stop:            make(chan bool),
+		quit:            &sync.WaitGroup{},
+	}, nil
+}
+
+// NewBatchConsumer creates a new consumer that processes messages in batches.
+// The handler is called when batchSize messages have accumulated or delayInterval
+// elapses — whichever comes first.
+func NewBatchConsumer(cfg *Config, handler ConsumerBatchHandlerFn, batchSize int, delayInterval time.Duration) (Consumer, error) {
+	client, err := NewClient(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("error creating the batch consumer client: %w", err)
+	}
+
+	return NewBatchConsumerClient(cfg, client, handler, batchSize, delayInterval)
+}
+
 func (consumer *consumer) Start() {
 	log.Bg().Info("Starting a new kafka consumer")
 	consumer.quit.Add(1)
@@ -58,9 +88,7 @@ func (consumer *consumer) Start() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			// `Consume` should be called inside an infinite loop, when a
 			// server-side rebalance happens, the consumer session will need to be
@@ -76,7 +104,7 @@ func (consumer *consumer) Start() {
 				return
 			}
 		}
-	}()
+	})
 
 	<-consumer.stop
 	log.Bg().Info("terminating: via signal")

@@ -9,7 +9,7 @@ import (
 type StringArray []string
 
 // Scan implements the sql.Scanner interface.
-func (a *StringArray) Scan(src interface{}) error {
+func (a *StringArray) Scan(src any) error {
 	bytes, ok := src.([]byte)
 	if !ok {
 		return fmt.Errorf("cannot convert %T to StringArray", src)

@@ -16,14 +16,14 @@ import (
 var _bufPool = buffer.NewPool()
 
 var _consolePool = sync.Pool{
-	New: func() interface{} {
+	New: func() any {
 		return &consoleEncoder{}
 	},
 }
 
 var _sliceEncoderPool = sync.Pool{
-	New: func() interface{} {
-		return &sliceArrayEncoder{elems: make([]interface{}, 0, 2)}
+	New: func() any {
+		return &sliceArrayEncoder{elems: make([]any, 0, 2)}
 	},
 }
 
@@ -117,7 +117,7 @@ func (enc *consoleEncoder) AddInt64(key string, val int64) {
 	enc.AppendInt64(val)
 }
 
-func (enc *consoleEncoder) AddReflected(key string, obj interface{}) error {
+func (enc *consoleEncoder) AddReflected(key string, obj any) error {
 	marshaled, err := json.Marshal(obj)
 	if err != nil {
 		return err
@@ -194,7 +194,7 @@ func (enc *consoleEncoder) AppendInt64(val int64) {
 	enc.buf.AppendInt(val)
 }
 
-func (enc *consoleEncoder) AppendReflected(val interface{}) error {
+func (enc *consoleEncoder) AppendReflected(val any) error {
 	marshaled, err := json.Marshal(val)
 	if err != nil {
 		return err
@@ -403,7 +403,7 @@ func (enc *consoleEncoder) tryAddRuneError(r rune, size int) bool {
 }
 
 type sliceArrayEncoder struct {
-	elems []interface{}
+	elems []any
 }
 
 func (s *sliceArrayEncoder) AppendArray(v zapcore.ArrayMarshaler) error {
@@ -420,7 +420,7 @@ func (s *sliceArrayEncoder) AppendObject(v zapcore.ObjectMarshaler) error {
 	return err
 }
 
-func (s *sliceArrayEncoder) AppendReflected(v interface{}) error {
+func (s *sliceArrayEncoder) AppendReflected(v any) error {
 	s.elems = append(s.elems, v)
 	return nil
 }

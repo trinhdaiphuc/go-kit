@@ -36,7 +36,7 @@ func MetricMiddleware(opts ...Option) gin.HandlerFunc {
 
 		httpStatus := strconv.Itoa(ctx.Writer.Status())
 
-		doneHandleRequest(InboundCall, ctx.Request.Method, ctx.FullPath(), httpStatus, httpStatus, elapsedTime)
+		doneHandleRequest(ServerCall, ctx.Request.Method, ctx.FullPath(), httpStatus, httpStatus, elapsedTime)
 	}
 }
 
@@ -82,7 +82,7 @@ func MetricHTTPMiddleware(opts ...Option) middleware.Middleware {
 				}
 			}
 
-			doneHandleRequest(InboundCall, r.Method, r.URL.Path, status, httpStatus, elapsedTime)
+			doneHandleRequest(ServerCall, r.Method, r.URL.Path, status, httpStatus, elapsedTime)
 		})
 	}
 }
@@ -122,7 +122,7 @@ func ClientHTTPTripperware(opts ...Option) httptripperware.Tripperware {
 
 			endpoint := httpEndpoint(pattern, cfg.ServiceName)
 
-			doneHandleRequest(OutboundCall, req.Method, endpoint, httpStatus, httpStatus, elapsedTime)
+			doneHandleRequest(ClientCall, req.Method, endpoint, httpStatus, httpStatus, elapsedTime)
 			return resp, err
 		})
 	}
@@ -153,5 +153,5 @@ func (rw *responseWrapper) Header() http.Header {
 }
 
 type errorResponse struct {
-	Error errorx.ErrorBody `json:"error,omitempty"`
+	Error errorx.ErrorBody `json:"error"`
 }

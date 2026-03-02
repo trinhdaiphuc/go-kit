@@ -13,26 +13,26 @@ func NewQueueLogger() queue.Logger {
 	return &QueueLogger{}
 }
 
-func (q *QueueLogger) Infof(format string, args ...interface{}) {
+func (q *QueueLogger) Infof(format string, args ...any) {
 	instance.ll.Info(fmt.Sprintf(format, args...))
 }
 
-func (q *QueueLogger) Errorf(format string, args ...interface{}) {
+func (q *QueueLogger) Errorf(format string, args ...any) {
 	instance.ll.Error(fmt.Sprintf(format, args...))
 }
 
-func (q *QueueLogger) Fatalf(format string, args ...interface{}) {
+func (q *QueueLogger) Fatalf(format string, args ...any) {
 	instance.ll.Fatal(fmt.Sprintf(format, args...))
 }
 
-func (q *QueueLogger) Info(args ...interface{}) {
+func (q *QueueLogger) Info(args ...any) {
 	instance.ll.Info(fmt.Sprintf("%s", args...))
 }
 
-func (q *QueueLogger) Error(args ...interface{}) {
+func (q *QueueLogger) Error(args ...any) {
 	instance.ll.Error(fmt.Sprintf("%s", args...))
 }
 
-func (q *QueueLogger) Fatal(args ...interface{}) {
+func (q *QueueLogger) Fatal(args ...any) {
 	instance.ll.Fatal(fmt.Sprintf("%s", args...))
 }

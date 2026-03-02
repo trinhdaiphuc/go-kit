@@ -18,7 +18,7 @@ func TestNew(t *testing.T) {
 	go http.ListenAndServe(":9090", nil)
 
 	cl := New("google")
-	for i := 0; i < 1; i++ {
+	for range 1 {
 		body, status, err := cl.Get(context.Background(), "https://www.google.com/query?abc=123", nil)
 		if err != nil {
 			fmt.Println("Call error:", err)

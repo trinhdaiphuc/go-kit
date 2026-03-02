@@ -16,7 +16,7 @@ type IntType interface {
 
 type IntSliceSerializer[N IntType] struct{}
 
-func (IntSliceSerializer[N]) Scan(ctx context.Context, field *schema.Field, dst reflect.Value, dbValue interface{}) error {
+func (IntSliceSerializer[N]) Scan(ctx context.Context, field *schema.Field, dst reflect.Value, dbValue any) error {
 	if dbValue == nil {
 		return nil
 	}
@@ -50,7 +50,7 @@ func (IntSliceSerializer[N]) Scan(ctx context.Context, field *schema.Field, dst 
 	return nil
 }
 
-func (IntSliceSerializer[N]) Value(ctx context.Context, field *schema.Field, dst reflect.Value, fieldValue interface{}) (interface{}, error) {
+func (IntSliceSerializer[N]) Value(ctx context.Context, field *schema.Field, dst reflect.Value, fieldValue any) (any, error) {
 	intSlice, ok := fieldValue.([]N)
 	if !ok {
 		return "", fmt.Errorf("failed to convert value to []int: %v", fieldValue)

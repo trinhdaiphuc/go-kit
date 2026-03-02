@@ -3,6 +3,7 @@ package cacheredis
 import (
 	"context"
 	"errors"
+	"maps"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -87,9 +88,7 @@ func (c *redisCache[K, V]) BulkGet(ctx context.Context, keys []K) (map[K]V, erro
 			if err != nil {
 				return nil, err
 			}
-			for k, v := range missingValues {
-				rs[k] = v
-			}
+			maps.Copy(rs, missingValues)
 		}
 	}
 
@@ -172,7 +171,7 @@ func (c *redisCache[K, V]) TTL(ctx context.Context, key K) (time.Duration, error
 }
 
 func (c *redisCache[K, V]) HSet(ctx context.Context, key K, keyVals ...cache.KeyVal[K, V]) error {
-	values := make([]interface{}, 0, len(keyVals)*2)
+	values := make([]any, 0, len(keyVals)*2)
 	for _, keyVal := range keyVals {
 		data, err := c.marshal(keyVal.Value)
 		if err != nil {

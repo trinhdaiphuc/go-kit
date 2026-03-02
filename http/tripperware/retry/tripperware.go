@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
 	"time"
 
 	httptripperware "github.com/trinhdaiphuc/go-kit/http/tripperware"
@@ -79,10 +80,5 @@ func isRetryable(response *http.Response, o *options) bool {
 		return false
 	}
 
-	for _, code := range o.retryCodes {
-		if response.StatusCode == code {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(o.retryCodes, response.StatusCode)
 }

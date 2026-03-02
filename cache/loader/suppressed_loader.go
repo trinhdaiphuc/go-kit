@@ -31,7 +31,7 @@ func (l *SuppressedLoader[K, V]) Load(ctx context.Context, c cache.Store[K, V], 
 	// itself does not return any of its errors, it returns
 	// the error that we return ourselves in the func below, which
 	// is also nil
-	res, err, _ := l.group.Do(strKey, func() (interface{}, error) {
+	res, err, _ := l.group.Do(strKey, func() (any, error) {
 		v, err := l.loader.Load(ctx, c, key)
 		if err != nil {
 			return nil, err
@@ -71,7 +71,7 @@ func (l *SuppressedLoader[K, V]) LoadAll(ctx context.Context, c cache.Store[K, V
 	// itself does not return any of its errors, it returns
 	// the error that we return ourselves in the func below, which
 	// is also nil
-	res, err, _ := l.group.Do(strKey, func() (interface{}, error) {
+	res, err, _ := l.group.Do(strKey, func() (any, error) {
 		v, err := l.loader.LoadAll(ctx, c, key)
 		if err != nil {
 			return nil, err
@@ -103,7 +103,7 @@ func (l *SuppressedLoader[K, V]) LoadAll(ctx context.Context, c cache.Store[K, V
 func (l *SuppressedLoader[K, V]) BulkLoad(ctx context.Context, c cache.Store[K, V], keys []K) (map[K]V, error) {
 	strKey := defaultKeyEncoder(keys)
 
-	res, err, _ := l.group.Do(strKey, func() (interface{}, error) {
+	res, err, _ := l.group.Do(strKey, func() (any, error) {
 		v, err := l.loader.BulkLoad(ctx, c, keys)
 		if err != nil {
 			return nil, err

@@ -90,7 +90,7 @@ func defaultKeyDecoder(key string) (result any) {
 	return key
 }
 
-func ProtoMarshaller(v interface{}) ([]byte, error) {
+func ProtoMarshaller(v any) ([]byte, error) {
 	msg, ok := v.(proto.Message)
 	if !ok {
 		return nil, errors.New("value is not a proto.Message")
@@ -98,7 +98,7 @@ func ProtoMarshaller(v interface{}) ([]byte, error) {
 	return proto.Marshal(msg)
 }
 
-func ProtoUnmarshaler(data []byte, v interface{}) error {
+func ProtoUnmarshaler(data []byte, v any) error {
 	msg, ok := v.(proto.Message)
 	if !ok {
 		return errors.New("value is not a proto.Message")

@@ -142,3 +142,14 @@ func WithCompression(compression sarama.CompressionCodec) Option {
 		c.Producer.Compression = compression
 	}
 }
+
+// WithChannelBufferSize set buffer size of channel to receive messages from broker.
+// Default is 256
+func WithChannelBufferSize(size int) Option {
+	return func(c *sarama.Config) {
+		if size <= 0 {
+			return
+		}
+		c.ChannelBufferSize = size
+	}
+}

@@ -16,7 +16,7 @@ type UintType interface {
 
 type UintSliceSerializer[U UintType] struct{}
 
-func (UintSliceSerializer[U]) Scan(ctx context.Context, field *schema.Field, dst reflect.Value, dbValue interface{}) error {
+func (UintSliceSerializer[U]) Scan(ctx context.Context, field *schema.Field, dst reflect.Value, dbValue any) error {
 	if dbValue == nil {
 		return nil
 	}
@@ -50,7 +50,7 @@ func (UintSliceSerializer[U]) Scan(ctx context.Context, field *schema.Field, dst
 	return nil
 }
 
-func (UintSliceSerializer[U]) Value(ctx context.Context, field *schema.Field, dst reflect.Value, fieldValue interface{}) (interface{}, error) {
+func (UintSliceSerializer[U]) Value(ctx context.Context, field *schema.Field, dst reflect.Value, fieldValue any) (any, error) {
 	uintSlice, ok := fieldValue.([]U)
 	if !ok {
 		return "", fmt.Errorf("failed to convert value to []uint: %v", fieldValue)

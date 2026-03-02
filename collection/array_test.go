@@ -3,7 +3,7 @@ package collection
 import (
 	"errors"
 	"reflect"
-	"sort"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -362,9 +362,7 @@ func TestDeDuplicate(t *testing.T) {
 	for _, tt := range testInt32 {
 		t.Run(tt.name, func(t *testing.T) {
 			got := DeDuplicate(tt.args.a)
-			sort.Slice(got, func(i, j int) bool { // Sort out put arrays for easy comparison
-				return got[i] < got[j]
-			})
+			slices.Sort(got)
 			assert.Equalf(t, tt.want, got, "DeDuplicate() = %v, want %v", got, tt.want)
 		})
 	}

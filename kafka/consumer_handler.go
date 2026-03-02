@@ -1,14 +1,13 @@
 package kafka
 
 import (
+	context0 "context"
+
 	"github.com/IBM/sarama"
 	"go.uber.org/zap"
-	"golang.org/x/net/context"
 
 	"github.com/trinhdaiphuc/go-kit/log"
 )
-
-//go:generate mockgen -destination=./mocks/$GOFILE -source=$GOFILE -package=kafkamock
 
 // ConsumerHandler represents a Sarama consumer group consumer
 type ConsumerHandler struct {
@@ -20,7 +19,7 @@ func NewConsumerHandler(handler ConsumerHandlerFn) sarama.ConsumerGroupHandler {
 }
 
 // ConsumerHandlerFn is invoked for each message received by consumer
-type ConsumerHandlerFn func(ctx context.Context, message *sarama.ConsumerMessage) error
+type ConsumerHandlerFn func(ctx context0.Context, message *sarama.ConsumerMessage) error
 
 // Setup is run at the beginning of a new session, before ConsumeClaim
 func (c *ConsumerHandler) Setup(sarama.ConsumerGroupSession) error {

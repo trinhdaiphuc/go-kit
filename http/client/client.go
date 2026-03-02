@@ -31,10 +31,10 @@ const (
 
 //go:generate mockgen -destination=./mocks/mock_$GOFILE -source=$GOFILE -package=mocks
 type Client interface {
-	Get(ctx context.Context, url string, request interface{}, opts ...RequestOption) ([]byte, int, error)
-	Post(ctx context.Context, url string, data interface{}, opts ...RequestOption) ([]byte, int, error)
-	Put(ctx context.Context, url string, data interface{}, opts ...RequestOption) ([]byte, int, error)
-	Delete(ctx context.Context, url string, request interface{}, opts ...RequestOption) ([]byte, int, error)
+	Get(ctx context.Context, url string, request any, opts ...RequestOption) ([]byte, int, error)
+	Post(ctx context.Context, url string, data any, opts ...RequestOption) ([]byte, int, error)
+	Put(ctx context.Context, url string, data any, opts ...RequestOption) ([]byte, int, error)
+	Delete(ctx context.Context, url string, request any, opts ...RequestOption) ([]byte, int, error)
 }
 
 type httpClient struct {
@@ -99,7 +99,7 @@ func (h *httpClient) do(req *http.Request) ([]byte, int, error) {
 	return body, resp.StatusCode, err
 }
 
-func (h *httpClient) Get(ctx context.Context, url string, request interface{}, opts ...RequestOption) ([]byte, int, error) {
+func (h *httpClient) Get(ctx context.Context, url string, request any, opts ...RequestOption) ([]byte, int, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, http.StatusBadRequest, err
@@ -129,7 +129,7 @@ func (h *httpClient) Get(ctx context.Context, url string, request interface{}, o
 	return h.do(req)
 }
 
-func (h *httpClient) Post(ctx context.Context, url string, data interface{}, opts ...RequestOption) ([]byte, int, error) {
+func (h *httpClient) Post(ctx context.Context, url string, data any, opts ...RequestOption) ([]byte, int, error) {
 	dataByte, err := json.Marshal(data)
 	if err != nil {
 		return nil, http.StatusBadRequest, err
@@ -151,7 +151,7 @@ func (h *httpClient) Post(ctx context.Context, url string, data interface{}, opt
 	return h.do(req)
 }
 
-func (h *httpClient) Put(ctx context.Context, url string, data interface{}, opts ...RequestOption) ([]byte, int, error) {
+func (h *httpClient) Put(ctx context.Context, url string, data any, opts ...RequestOption) ([]byte, int, error) {
 	dataByte, err := json.Marshal(data)
 	if err != nil {
 		return nil, http.StatusBadRequest, err
@@ -173,7 +173,7 @@ func (h *httpClient) Put(ctx context.Context, url string, data interface{}, opts
 	return h.do(req)
 }
 
-func (h *httpClient) Delete(ctx context.Context, url string, request interface{}, opts ...RequestOption) ([]byte, int, error) {
+func (h *httpClient) Delete(ctx context.Context, url string, request any, opts ...RequestOption) ([]byte, int, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
 	if err != nil {
 		return nil, http.StatusBadRequest, err

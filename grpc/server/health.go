@@ -11,6 +11,12 @@ type Service interface {
 	Check(ctx context.Context) error
 }
 
+type ServiceFunc func(ctx context.Context) error
+
+func (f ServiceFunc) Check(ctx context.Context) error {
+	return f(ctx)
+}
+
 type HealthController struct {
 	healthService Service
 }
@@ -36,6 +42,19 @@ func (h *HealthController) Check(ctx context.Context, request *grpc_health_v1.He
 	return &grpc_health_v1.HealthCheckResponse{
 		Status: grpc_health_v1.HealthCheckResponse_SERVING,
 	}, nil
+}
+
+func (h *HealthController) List(ctx context.Context, request *grpc_health_v1.HealthListRequest) (*grpc_health_v1.HealthListResponse, error) {
+	if h.healthService == nil {
+		return &grpc_health_v1.HealthListResponse{}, nil
+	}
+
+	err := h.healthService.Check(ctx)
+	if err != nil {
+		return &grpc_health_v1.HealthListResponse{}, nil
+	}
+
+	return &grpc_health_v1.HealthListResponse{}, nil
 }
 
 func (h *HealthController) Watch(request *grpc_health_v1.HealthCheckRequest, g grpc.ServerStreamingServer[grpc_health_v1.HealthCheckResponse]) error {

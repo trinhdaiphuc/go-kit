@@ -16,7 +16,7 @@ type FloatType interface {
 
 type FloatSliceSerializer[F FloatType] struct{}
 
-func (FloatSliceSerializer[F]) Scan(ctx context.Context, field *schema.Field, dst reflect.Value, dbValue interface{}) error {
+func (FloatSliceSerializer[F]) Scan(ctx context.Context, field *schema.Field, dst reflect.Value, dbValue any) error {
 	if dbValue == nil {
 		return nil
 	}
@@ -50,7 +50,7 @@ func (FloatSliceSerializer[F]) Scan(ctx context.Context, field *schema.Field, ds
 	return nil
 }
 
-func (FloatSliceSerializer[F]) Value(ctx context.Context, field *schema.Field, dst reflect.Value, fieldValue interface{}) (interface{}, error) {
+func (FloatSliceSerializer[F]) Value(ctx context.Context, field *schema.Field, dst reflect.Value, fieldValue any) (any, error) {
 	floatSlice, ok := fieldValue.([]F)
 	if !ok {
 		return "", fmt.Errorf("failed to convert value to []float: %v", fieldValue)

@@ -29,7 +29,7 @@ func Neo4jRunInterceptor(session Session, queryName string) RunFunc {
 			statusCode = "500" // Error
 		}
 
-		doneHandleRequest(OutboundCall, databaseLabelMethod, queryName, statusCode, statusCode, elapsedTime)
+		doneHandleRequest(ClientCall, databaseLabelMethod, queryName, statusCode, statusCode, elapsedTime)
 		return run, err
 	}
 }
@@ -45,7 +45,7 @@ func Neo4jManagedTransactionWork(queryName string, f func(tx neo4j.ManagedTransa
 			statusCode = "500" // Error
 		}
 
-		doneHandleRequest(OutboundCall, databaseLabelMethod, queryName, statusCode, statusCode, elapsedTime)
+		doneHandleRequest(ClientCall, databaseLabelMethod, queryName, statusCode, statusCode, elapsedTime)
 		return run, err
 	}
 }
@@ -57,6 +57,6 @@ func ObserveNeo4jExecution(queryName string, summary neo4j.ResultSummary, err er
 		statusCode = "500"
 	}
 
-	doneHandleRequest(OutboundCall, availableLabelMethod, queryName, statusCode, statusCode, summary.ResultAvailableAfter().Seconds())
-	doneHandleRequest(OutboundCall, consumeLabelMethod, queryName, statusCode, statusCode, summary.ResultConsumedAfter().Seconds())
+	doneHandleRequest(ClientCall, availableLabelMethod, queryName, statusCode, statusCode, summary.ResultAvailableAfter().Seconds())
+	doneHandleRequest(ClientCall, consumeLabelMethod, queryName, statusCode, statusCode, summary.ResultConsumedAfter().Seconds())
 }

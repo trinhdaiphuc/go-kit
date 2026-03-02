@@ -189,7 +189,7 @@ func (t *bufferArrayEncoder) AppendObject(v zapcore.ObjectMarshaler) error {
 	return err
 }
 
-func (t *bufferArrayEncoder) AppendReflected(v interface{}) error {
+func (t *bufferArrayEncoder) AppendReflected(v any) error {
 	t.stringsSlice = append(t.stringsSlice, fmt.Sprintf("%v", v))
 	return nil
 }
@@ -266,7 +266,7 @@ func (t *bufferArrayEncoder) AppendUintptr(v uintptr) {
 	t.stringsSlice = append(t.stringsSlice, fmt.Sprintf("%v", v))
 }
 
-func Attribute(key string, value interface{}) attribute.KeyValue {
+func Attribute(key string, value any) attribute.KeyValue {
 	switch value := value.(type) {
 	case nil:
 		return attribute.String(key, "<nil>")

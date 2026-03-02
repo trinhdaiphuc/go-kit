@@ -16,12 +16,10 @@ func NewRoutineGroup() RoutineGroup {
 }
 
 func (g *routineGroup) Run(fn func()) {
-	g.waitGroup.Add(1)
 
-	go func() {
-		defer g.waitGroup.Done()
+	g.waitGroup.Go(func() {
 		fn()
-	}()
+	})
 }
 
 func (g *routineGroup) Wait() {

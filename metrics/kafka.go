@@ -23,7 +23,7 @@ func (producer *kafkaProducer) SendMessage(msg *sarama.ProducerMessage) (partiti
 		statusCode = "500" // Error
 	}
 
-	doneHandleRequest(OutboundCall, producerLabelMethod, msg.Topic, statusCode, statusCode, elapsedTime)
+	doneHandleRequest(ClientCall, producerLabelMethod, msg.Topic, statusCode, statusCode, elapsedTime)
 
 	return
 }
@@ -39,7 +39,7 @@ func (producer *kafkaProducer) SendMessages(msg []*sarama.ProducerMessage) error
 	}
 
 	doneHandleRequest(
-		OutboundCall, producerLabelMethod, kafka.GetMessagesTopic(msg), statusCode, statusCode, elapsedTime,
+		ClientCall, producerLabelMethod, kafka.GetMessagesTopic(msg), statusCode, statusCode, elapsedTime,
 	)
 
 	return err
@@ -60,7 +60,7 @@ func KafkaConsumerHandlerInterceptor(handler kafka.ConsumerHandlerFn) kafka.Cons
 			statusCode = "500" // Error
 		}
 
-		doneHandleRequest(InboundCall, consumerLabelMethod, message.Topic, statusCode, statusCode, elapsedTime)
+		doneHandleRequest(ServerCall, consumerLabelMethod, message.Topic, statusCode, statusCode, elapsedTime)
 
 		return err
 	}

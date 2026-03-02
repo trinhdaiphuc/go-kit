@@ -13,10 +13,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type HandleMethod func(fullMethod string, req interface{}) string
+type HandleMethod func(fullMethod string, req any) string
 
 func GrpcUnaryServerInterceptor(handleMethod ...HandleMethod) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		var (
 			httpStatusCode = http.StatusOK
 			statusCode     = codes.OK
@@ -36,14 +36,14 @@ func GrpcUnaryServerInterceptor(handleMethod ...HandleMethod) grpc.UnaryServerIn
 			method = handleMethod[0](info.FullMethod, req)
 		}
 
-		doneHandleRequest(InboundCall, grpcLabelMethod, method, statusCode.String(), httpStatusCodeStr, elapsedTime)
+		doneHandleRequest(ServerCall, grpcLabelMethod, method, statusCode.String(), httpStatusCodeStr, elapsedTime)
 
 		return resp, err
 	}
 }
 
 func GrpcUnaryClientInterceptor(handleMethod ...HandleMethod) grpc.UnaryClientInterceptor {
-	return func(ctx context.Context, fullMethod string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, callOpts ...grpc.CallOption) error {
+	return func(ctx context.Context, fullMethod string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, callOpts ...grpc.CallOption) error {
 		var (
 			httpStatusCode = http.StatusOK
 			statusCode     = codes.OK
@@ -64,7 +64,7 @@ func GrpcUnaryClientInterceptor(handleMethod ...HandleMethod) grpc.UnaryClientIn
 			method = handleMethod[0](fullMethod, req)
 		}
 
-		doneHandleRequest(OutboundCall, grpcLabelMethod, method, statusCode.String(), httpStatusCodeStr, elapsedTime)
+		doneHandleRequest(ClientCall, grpcLabelMethod, method, statusCode.String(), httpStatusCodeStr, elapsedTime)
 
 		return err
 	}
@@ -81,8 +81,8 @@ func ParseErr(grpcErr error) int {
 
 func SplitGRPCMethodName(fullMethodName string) (serviceName, methodName string) {
 	fullMethodName = strings.TrimPrefix(fullMethodName, "/") // remove leading slash
-	if i := strings.Index(fullMethodName, "/"); i >= 0 {
-		return fullMethodName[:i], fullMethodName[i+1:]
+	if before, after, ok := strings.Cut(fullMethodName, "/"); ok {
+		return before, after
 	}
 	return "unknown", "unknown"
 }
