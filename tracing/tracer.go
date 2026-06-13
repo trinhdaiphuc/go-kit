@@ -151,3 +151,7 @@ func GetTraceID(ctx context.Context) string {
 	}
 	return ""
 }
+
+func ForkCtx(parentCtx context.Context) context.Context {
+	return trace.ContextWithRemoteSpanContext(context.Background(), trace.SpanContextFromContext(parentCtx))
+}
