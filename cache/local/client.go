@@ -93,8 +93,8 @@ func (c *client[K, V]) Delete(ctx context.Context, keys ...K) error {
 }
 
 func (c *client[K, V]) Incr(ctx context.Context, key K, value int64) (int64, error) {
-	// TTLCache doesn't support atomic increment
-	return 0, nil
+	// ttlcache has no atomic increment; report it rather than fake a result.
+	return 0, cache.ErrorUnsupportedOperation
 }
 
 func (c *client[K, V]) Expire(ctx context.Context, key K, expireTime time.Duration) error {
@@ -114,20 +114,24 @@ func (c *client[K, V]) TTL(ctx context.Context, key K) (time.Duration, error) {
 	return time.Until(item.ExpiresAt()), nil
 }
 
+// ttlcache stores flat key/value pairs, so the hash operations of cache.Store
+// have no local equivalent. They report that rather than silently dropping
+// writes and returning zero values on read.
+
 func (c *client[K, V]) HSet(ctx context.Context, key K, keyVals ...cache.KeyVal[K, V]) error {
-	return nil
+	return cache.ErrorUnsupportedOperation
 }
 
 func (c *client[K, V]) HGet(ctx context.Context, key, field K) (v V, err error) {
-	return
+	return v, cache.ErrorUnsupportedOperation
 }
 
 func (c *client[K, V]) HGetAll(ctx context.Context, key K) (map[K]V, error) {
-	return nil, nil
+	return nil, cache.ErrorUnsupportedOperation
 }
 
 func (c *client[K, V]) HDel(ctx context.Context, key K, fields ...K) error {
-	return nil
+	return cache.ErrorUnsupportedOperation
 }
 
 func (c *client[K, V]) Ping(ctx context.Context) error {

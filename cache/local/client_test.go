@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/trinhdaiphuc/go-kit/cache"
 )
 
 type data struct {
@@ -35,5 +37,35 @@ func TestClient_CloseIsIdempotent(t *testing.T) {
 	assert.NotPanics(t, func() {
 		c.Close()
 		c.Close()
+	})
+}
+
+func TestClient_UnsupportedOperations(t *testing.T) {
+	c := NewClient[string, *data]()
+	defer c.Close()
+
+	ctx := context.Background()
+
+	t.Run("Incr", func(t *testing.T) {
+		_, err := c.Incr(ctx, "key", 1)
+		assert.ErrorIs(t, err, cache.ErrorUnsupportedOperation)
+	})
+
+	t.Run("HSet", func(t *testing.T) {
+		assert.ErrorIs(t, c.HSet(ctx, "key"), cache.ErrorUnsupportedOperation)
+	})
+
+	t.Run("HGet", func(t *testing.T) {
+		_, err := c.HGet(ctx, "key", "field")
+		assert.ErrorIs(t, err, cache.ErrorUnsupportedOperation)
+	})
+
+	t.Run("HGetAll", func(t *testing.T) {
+		_, err := c.HGetAll(ctx, "key")
+		assert.ErrorIs(t, err, cache.ErrorUnsupportedOperation)
+	})
+
+	t.Run("HDel", func(t *testing.T) {
+		assert.ErrorIs(t, c.HDel(ctx, "key", "field"), cache.ErrorUnsupportedOperation)
 	})
 }
