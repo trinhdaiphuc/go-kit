@@ -13,6 +13,7 @@ import (
 	"github.com/golang-queue/queue"
 	"github.com/golang-queue/queue/core"
 	"github.com/golang-queue/queue/job"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
@@ -392,4 +393,32 @@ func TestGoroutinePanic(t *testing.T) {
 	q.Shutdown()
 	assert.Error(t, q.Queue(m))
 	q.Wait()
+}
+
+// A stream entry written by something other than this worker has no "body"
+// field; Request must report that instead of panicking on the type assertion.
+func TestRequestRejectsMalformedMessage(t *testing.T) {
+	ctx := context.Background()
+	redisC, endpoint := setupRedisContainer(ctx, t)
+	defer testcontainers.CleanupContainer(t, redisC)
+
+	w := NewWorker(
+		WithAddr(endpoint),
+		WithStreamName("malformed"),
+		WithBlockTime(100*time.Millisecond),
+	)
+	defer func() {
+		assert.NoError(t, w.Shutdown())
+	}()
+
+	// Create the group first so the worker sees entries added after it.
+	w.startConsumer()
+	require.NoError(t, w.rdb.XAdd(ctx, &redis.XAddArgs{
+		Stream: "malformed",
+		Values: map[string]any{"not_body": 1},
+	}).Err())
+
+	task, err := w.Request()
+	assert.Nil(t, task)
+	assert.ErrorContains(t, err, "no string body")
 }

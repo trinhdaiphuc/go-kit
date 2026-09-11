@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -200,8 +201,15 @@ loop:
 			if !ok {
 				return nil, queue.ErrQueueHasBeenClosed
 			}
+			body, ok := task.Values["body"].(string)
+			if !ok {
+				return nil, fmt.Errorf("redis stream message %q has no string body", task.ID)
+			}
+
 			var data job.Message
-			_ = json.Unmarshal(bytesconv.StrToBytes(task.Values["body"].(string)), &data)
+			if err := json.Unmarshal(bytesconv.StrToBytes(body), &data); err != nil {
+				return nil, fmt.Errorf("unmarshal redis stream message %q: %w", task.ID, err)
+			}
 			return &data, nil
 		case <-time.After(1 * time.Second):
 			if clock == 5 {
