@@ -3,6 +3,7 @@ package cacheredis
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"time"
 
@@ -235,7 +236,11 @@ func (c *redisCache[K, V]) HGetAll(ctx context.Context, key K) (map[K]V, error) 
 		if err != nil {
 			return nil, err
 		}
-		rs[c.decodeHashKey(keyStr)] = data
+		hashKey, err := c.decodeHashKey(keyStr)
+		if err != nil {
+			return nil, err
+		}
+		rs[hashKey] = data
 	}
 
 	return rs, nil
@@ -284,12 +289,12 @@ func (c *redisCache[K, V]) encodeKey(key K) string {
 	return c.opts.Prefix + ":" + c.opts.KeyEncoder(key)
 }
 
-func (c *redisCache[K, V]) decodeHashKey(key string) (result K) {
+func (c *redisCache[K, V]) decodeHashKey(key string) (result K, err error) {
 	k := c.opts.KeyDecoder(key)
 
 	decodeKey, ok := k.(K)
 	if !ok {
-		return
+		return result, fmt.Errorf("decode hash key %q: KeyDecoder returned %T, want %T", key, k, result)
 	}
-	return decodeKey
+	return decodeKey, nil
 }

@@ -884,3 +884,19 @@ func Test_redisCache_BulkGet(t *testing.T) {
 		})
 	}
 }
+
+func Test_redisCache_HGetAll_badKeyDecoder(t *testing.T) {
+	client, mock := redismock.NewClientMock()
+	repo := NewRedisCache[string, *Data](client,
+		WithPrefix[string, *Data]("test"),
+		WithKeyDecoder[string, *Data](func(key string) any { return 42 }),
+	)
+
+	mock.ExpectHGetAll("test:key").SetVal(map[string]string{
+		"field1": `{"name":"John Doe","value":100}`,
+	})
+
+	got, err := repo.HGetAll(context.Background(), "key")
+	assert.Error(t, err, "a KeyDecoder returning the wrong type must not be silently mapped to the zero key")
+	assert.Nil(t, got)
+}
