@@ -2,6 +2,7 @@ package cachelocal
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/jellydator/ttlcache/v3"
@@ -10,8 +11,10 @@ import (
 )
 
 type client[K comparable, V any] struct {
-	cli  *ttlcache.Cache[K, V]
-	opts *Options[K, V]
+	cli      *ttlcache.Cache[K, V]
+	opts     *Options[K, V]
+	done     chan struct{}
+	stopOnce sync.Once
 }
 
 func NewClient[K comparable, V any](opts ...Option[K, V]) cache.Store[K, V] {
@@ -27,6 +30,7 @@ func NewClient[K comparable, V any](opts ...Option[K, V]) cache.Store[K, V] {
 			ttlcache.WithTTL[K, V](option.TTL),
 		),
 		opts: option,
+		done: make(chan struct{}),
 	}
 
 	go cli.cleanUpExpired()
@@ -131,13 +135,23 @@ func (c *client[K, V]) Ping(ctx context.Context) error {
 }
 
 func (c *client[K, V]) Close() {
-	c.cli.Stop()
+	c.stopOnce.Do(func() {
+		close(c.done)
+		c.cli.Stop()
+	})
 }
 
 func (c *client[K, V]) cleanUpExpired() {
+	ticker := time.NewTicker(c.opts.CleanUpInterval)
+	defer ticker.Stop()
+
 	for {
-		time.Sleep(c.opts.CleanUpInterval)
-		c.cli.DeleteExpired()
+		select {
+		case <-ticker.C:
+			c.cli.DeleteExpired()
+		case <-c.done:
+			return
+		}
 	}
 }
 
