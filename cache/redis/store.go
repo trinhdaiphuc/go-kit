@@ -199,7 +199,7 @@ func (c *redisCache[K, V]) HGet(ctx context.Context, key, field K) (value V, err
 		return value, cache.ErrorKeyNotFound
 	}
 
-	allValues, err := c.loadAll(ctx, field)
+	allValues, err := c.loadAll(ctx, key)
 	if err != nil {
 		return value, err
 	}

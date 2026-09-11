@@ -603,6 +603,38 @@ func Test_redisCache_HGet(t *testing.T) {
 	}
 }
 
+// recordingLoader captures the key LoadAll was called with, so the HGet
+// fallback can be asserted to hydrate the hash key rather than the field.
+type recordingLoader struct {
+	gotLoadAllKey string
+}
+
+func (l *recordingLoader) Load(ctx context.Context, c cache.Store[string, *Data], key string) (*Data, error) {
+	return nil, errors.New("not used")
+}
+
+func (l *recordingLoader) LoadAll(ctx context.Context, c cache.Store[string, *Data], key string) (map[string]*Data, error) {
+	l.gotLoadAllKey = key
+	return map[string]*Data{"field1": {Name: "John Doe", Value: 100}}, nil
+}
+
+func (l *recordingLoader) BulkLoad(ctx context.Context, c cache.Store[string, *Data], keys []string) (map[string]*Data, error) {
+	return nil, nil
+}
+
+func Test_redisCache_HGet_fallbackLoadsHashKey(t *testing.T) {
+	loader := &recordingLoader{}
+	repo, mock := newRedisClientMock[string, *Data](loader)
+	mock.ExpectHGet("test:key", "field1").RedisNil()
+	mock.ExpectHLen("test:key").SetVal(0)
+
+	got, err := repo.HGet(context.Background(), "key", "field1")
+
+	assert.NoError(t, err)
+	assert.Equal(t, &Data{Name: "John Doe", Value: 100}, got)
+	assert.Equal(t, "key", loader.gotLoadAllKey, "LoadAll must be called with the hash key, not the field")
+}
+
 func Test_redisCache_HGetAll(t *testing.T) {
 	type args struct {
 		ctx    context.Context
