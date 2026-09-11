@@ -40,7 +40,7 @@ func (r *RedSyncLoader[K, V]) Load(ctx context.Context, c cache.Store[K, V], key
 	defer func() {
 		ok, errUnlock := mutex.Unlock()
 		if !ok || errUnlock != nil {
-			log.For(ctx).Error("Unlock failed", zap.Error(err))
+			log.For(ctx).Error("Unlock failed", zap.Error(errUnlock))
 		}
 	}()
 
@@ -59,7 +59,7 @@ func (r *RedSyncLoader[K, V]) LoadAll(ctx context.Context, c cache.Store[K, V], 
 	defer func() {
 		ok, errUnlock := mutex.Unlock()
 		if !ok || errUnlock != nil {
-			log.For(ctx).Error("Unlock failed", zap.Error(err))
+			log.For(ctx).Error("Unlock failed", zap.Error(errUnlock))
 		}
 	}()
 
@@ -76,7 +76,7 @@ func (r *RedSyncLoader[K, V]) BulkLoad(ctx context.Context, c cache.Store[K, V],
 	defer func() {
 		ok, errUnlock := mutex.Unlock()
 		if !ok || errUnlock != nil {
-			log.For(ctx).Error("Unlock failed", zap.Error(err))
+			log.For(ctx).Error("Unlock failed", zap.Error(errUnlock))
 		}
 	}()
 
