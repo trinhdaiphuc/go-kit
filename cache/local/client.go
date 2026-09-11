@@ -2,6 +2,7 @@ package cachelocal
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/jellydator/ttlcache/v3"
@@ -10,8 +11,10 @@ import (
 )
 
 type client[K comparable, V any] struct {
-	cli  *ttlcache.Cache[K, V]
-	opts *Options[K, V]
+	cli      *ttlcache.Cache[K, V]
+	opts     *Options[K, V]
+	done     chan struct{}
+	stopOnce sync.Once
 }
 
 func NewClient[K comparable, V any](opts ...Option[K, V]) cache.Store[K, V] {
@@ -27,6 +30,7 @@ func NewClient[K comparable, V any](opts ...Option[K, V]) cache.Store[K, V] {
 			ttlcache.WithTTL[K, V](option.TTL),
 		),
 		opts: option,
+		done: make(chan struct{}),
 	}
 
 	go cli.cleanUpExpired()
@@ -70,15 +74,13 @@ func (c *client[K, V]) Set(ctx context.Context, key K, value V) error {
 }
 
 func (c *client[K, V]) SetNX(ctx context.Context, key K, value V) (bool, error) {
-	// TTLCache doesn't have native SetNX, so we check existence first
-	if c.cli.Has(key) {
-		return false, nil
-	}
-	item := c.cli.Set(key, value, c.opts.TTL)
+	// GetOrSet does the check and the insert under the cache's own lock; a
+	// Has()-then-Set() pair lets two callers both believe they won the key.
+	item, found := c.cli.GetOrSet(key, value, ttlcache.WithTTL[K, V](c.opts.TTL))
 	if item == nil {
 		return false, cache.ErrorFailedSetCache
 	}
-	return true, nil
+	return !found, nil
 }
 
 func (c *client[K, V]) Delete(ctx context.Context, keys ...K) error {
@@ -89,8 +91,8 @@ func (c *client[K, V]) Delete(ctx context.Context, keys ...K) error {
 }
 
 func (c *client[K, V]) Incr(ctx context.Context, key K, value int64) (int64, error) {
-	// TTLCache doesn't support atomic increment
-	return 0, nil
+	// ttlcache has no atomic increment; report it rather than fake a result.
+	return 0, cache.ErrorUnsupportedOperation
 }
 
 func (c *client[K, V]) Expire(ctx context.Context, key K, expireTime time.Duration) error {
@@ -110,20 +112,24 @@ func (c *client[K, V]) TTL(ctx context.Context, key K) (time.Duration, error) {
 	return time.Until(item.ExpiresAt()), nil
 }
 
+// ttlcache stores flat key/value pairs, so the hash operations of cache.Store
+// have no local equivalent. They report that rather than silently dropping
+// writes and returning zero values on read.
+
 func (c *client[K, V]) HSet(ctx context.Context, key K, keyVals ...cache.KeyVal[K, V]) error {
-	return nil
+	return cache.ErrorUnsupportedOperation
 }
 
 func (c *client[K, V]) HGet(ctx context.Context, key, field K) (v V, err error) {
-	return
+	return v, cache.ErrorUnsupportedOperation
 }
 
 func (c *client[K, V]) HGetAll(ctx context.Context, key K) (map[K]V, error) {
-	return nil, nil
+	return nil, cache.ErrorUnsupportedOperation
 }
 
 func (c *client[K, V]) HDel(ctx context.Context, key K, fields ...K) error {
-	return nil
+	return cache.ErrorUnsupportedOperation
 }
 
 func (c *client[K, V]) Ping(ctx context.Context) error {
@@ -131,13 +137,23 @@ func (c *client[K, V]) Ping(ctx context.Context) error {
 }
 
 func (c *client[K, V]) Close() {
-	c.cli.Stop()
+	c.stopOnce.Do(func() {
+		close(c.done)
+		c.cli.Stop()
+	})
 }
 
 func (c *client[K, V]) cleanUpExpired() {
+	ticker := time.NewTicker(c.opts.CleanUpInterval)
+	defer ticker.Stop()
+
 	for {
-		time.Sleep(c.opts.CleanUpInterval)
-		c.cli.DeleteExpired()
+		select {
+		case <-ticker.C:
+			c.cli.DeleteExpired()
+		case <-c.done:
+			return
+		}
 	}
 }
 

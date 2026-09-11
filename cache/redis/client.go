@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/redis/go-redis/extra/redisotel/v9"
@@ -111,12 +112,11 @@ func NewClient(cfg *Config) (redis.UniversalClient, func(), error) {
 	}
 
 	if cfg.EnableMonitor {
-		exp, err := prometheus.New()
+		provider, err := meterProvider()
 		if err != nil {
 			return nil, nil, err
 		}
-		metricProvider := metric.NewMeterProvider(metric.WithReader(exp))
-		if err := redisotel.InstrumentMetrics(client, redisotel.WithMeterProvider(metricProvider)); err != nil {
+		if err := redisotel.InstrumentMetrics(client, redisotel.WithMeterProvider(provider)); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -164,12 +164,11 @@ func NewClusterClient(cfg *Config) (redis.UniversalClient, func(), error) {
 	}
 
 	if cfg.EnableMonitor {
-		exp, err := prometheus.New()
+		provider, err := meterProvider()
 		if err != nil {
 			return nil, nil, err
 		}
-		metricProvider := metric.NewMeterProvider(metric.WithReader(exp))
-		if err := redisotel.InstrumentMetrics(client, redisotel.WithMeterProvider(metricProvider)); err != nil {
+		if err := redisotel.InstrumentMetrics(client, redisotel.WithMeterProvider(provider)); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -183,4 +182,26 @@ func NewClusterClient(cfg *Config) (redis.UniversalClient, func(), error) {
 
 	log.Bg().Info("Redis client connected")
 	return client, cleanup, nil
+}
+
+var (
+	_meterProviderOnce sync.Once
+	_meterProvider     *metric.MeterProvider
+	_meterProviderErr  error
+)
+
+// meterProvider builds the OTel Prometheus exporter once per process. Each
+// prometheus.New() registers another collector on the default registry, so one
+// per client makes every scrape fail with duplicate metrics.
+func meterProvider() (*metric.MeterProvider, error) {
+	_meterProviderOnce.Do(func() {
+		exp, err := prometheus.New()
+		if err != nil {
+			_meterProviderErr = err
+			return
+		}
+		_meterProvider = metric.NewMeterProvider(metric.WithReader(exp))
+	})
+
+	return _meterProvider, _meterProviderErr
 }

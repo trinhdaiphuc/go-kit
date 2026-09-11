@@ -160,3 +160,20 @@ func newRedSyncLoaderMock[K comparable, V any](t *testing.T, loader cache.Loader
 		mutexMock:   mutexMock,
 	}
 }
+
+func TestRedSyncLoader_LoadAllUsesLoadKey(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	redLockMock := redislock.NewMockRedLock(ctrl)
+	mutexMock := redislock.NewMockLockMutex(ctrl)
+
+	redLockMock.EXPECT().GetLock("lock:key", 1*time.Second).Return(mutexMock)
+	mutexMock.EXPECT().TryLockContext(gomock.Any()).Return(nil)
+	mutexMock.EXPECT().Unlock().Return(true, nil)
+
+	loader := NewRedSyncLoader[string, *Data](redLockMock, &loaderSuccess{}, func(k string) string {
+		return "lock:" + k
+	}, 1*time.Second)
+
+	_, err := loader.LoadAll(context.Background(), nil, "key")
+	assert.NoError(t, err)
+}

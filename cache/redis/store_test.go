@@ -603,6 +603,38 @@ func Test_redisCache_HGet(t *testing.T) {
 	}
 }
 
+// recordingLoader captures the key LoadAll was called with, so the HGet
+// fallback can be asserted to hydrate the hash key rather than the field.
+type recordingLoader struct {
+	gotLoadAllKey string
+}
+
+func (l *recordingLoader) Load(ctx context.Context, c cache.Store[string, *Data], key string) (*Data, error) {
+	return nil, errors.New("not used")
+}
+
+func (l *recordingLoader) LoadAll(ctx context.Context, c cache.Store[string, *Data], key string) (map[string]*Data, error) {
+	l.gotLoadAllKey = key
+	return map[string]*Data{"field1": {Name: "John Doe", Value: 100}}, nil
+}
+
+func (l *recordingLoader) BulkLoad(ctx context.Context, c cache.Store[string, *Data], keys []string) (map[string]*Data, error) {
+	return nil, nil
+}
+
+func Test_redisCache_HGet_fallbackLoadsHashKey(t *testing.T) {
+	loader := &recordingLoader{}
+	repo, mock := newRedisClientMock[string, *Data](loader)
+	mock.ExpectHGet("test:key", "field1").RedisNil()
+	mock.ExpectHLen("test:key").SetVal(0)
+
+	got, err := repo.HGet(context.Background(), "key", "field1")
+
+	assert.NoError(t, err)
+	assert.Equal(t, &Data{Name: "John Doe", Value: 100}, got)
+	assert.Equal(t, "key", loader.gotLoadAllKey, "LoadAll must be called with the hash key, not the field")
+}
+
 func Test_redisCache_HGetAll(t *testing.T) {
 	type args struct {
 		ctx    context.Context
@@ -791,4 +823,80 @@ func Test_redisCache_Close(t *testing.T) {
 			repo.Close()
 		})
 	}
+}
+
+func Test_redisCache_BulkGet(t *testing.T) {
+	tests := []struct {
+		name    string
+		keys    []string
+		mock    func(mock redismock.ClientMock)
+		want    map[string]*Data
+		wantErr bool
+	}{
+		{
+			name: "all keys hit — result is keyed by the original key, not the prefixed one",
+			keys: []string{"key1", "key2"},
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectMGet("test:key1", "test:key2").SetVal([]any{
+					`{"name":"John Doe","value":100}`,
+					`{"name":"Jane Doe","value":200}`,
+				})
+			},
+			want: map[string]*Data{
+				"key1": {Name: "John Doe", Value: 100},
+				"key2": {Name: "Jane Doe", Value: 200},
+			},
+		},
+		{
+			name: "partial hit falls back to the loader for missing keys only",
+			keys: []string{"key1", "key2"},
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectMGet("test:key1", "test:key2").SetVal([]any{
+					`{"name":"John Doe","value":100}`,
+					nil,
+				})
+			},
+			want: map[string]*Data{
+				"key1": {Name: "John Doe", Value: 100},
+			},
+		},
+		{
+			name: "no keys",
+			keys: nil,
+			want: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo, mock := newRedisClientMock[string, *Data](&loaderSuccess{})
+			if tt.mock != nil {
+				tt.mock(mock)
+			}
+
+			got, err := repo.BulkGet(context.Background(), tt.keys)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func Test_redisCache_HGetAll_badKeyDecoder(t *testing.T) {
+	client, mock := redismock.NewClientMock()
+	repo := NewRedisCache[string, *Data](client,
+		WithPrefix[string, *Data]("test"),
+		WithKeyDecoder[string, *Data](func(key string) any { return 42 }),
+	)
+
+	mock.ExpectHGetAll("test:key").SetVal(map[string]string{
+		"field1": `{"name":"John Doe","value":100}`,
+	})
+
+	got, err := repo.HGetAll(context.Background(), "key")
+	assert.Error(t, err, "a KeyDecoder returning the wrong type must not be silently mapped to the zero key")
+	assert.Nil(t, got)
 }

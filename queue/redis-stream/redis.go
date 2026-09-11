@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -77,17 +78,23 @@ func NewWorker(opts ...Option) *Worker {
 
 func (w *Worker) startConsumer() {
 	w.startOnce.Do(func() {
-		if err := w.rdb.XGroupCreateMkStream(
-			context.Background(),
-			w.opts.streamName,
-			w.opts.group,
-			"$",
-		).Err(); err != nil {
+		if err := w.ensureGroup(context.Background()); err != nil {
 			w.opts.logger.Error(err)
 		}
 
 		go w.fetchTask()
 	})
+}
+
+// ensureGroup creates the stream and its consumer group. BUSYGROUP just means
+// another worker got there first, which is the normal case on restart.
+func (w *Worker) ensureGroup(ctx context.Context) error {
+	err := w.rdb.XGroupCreateMkStream(ctx, w.opts.streamName, w.opts.group, "$").Err()
+	if err != nil && !strings.Contains(err.Error(), "BUSYGROUP") {
+		return fmt.Errorf("create consumer group %s on stream %s: %w", w.opts.group, w.opts.streamName, err)
+	}
+
+	return nil
 }
 
 func (w *Worker) fetchTask() {
@@ -110,7 +117,28 @@ func (w *Worker) fetchTask() {
 			Block: w.opts.blockTime,
 		}).Result()
 		if err != nil && !errors.Is(err, redis.Nil) {
-			w.opts.logger.Errorf("error while reading from redis %v", err)
+			// NOGROUP means the whole stream key is gone (DEL, FLUSHDB, a TTL,
+			// eviction, a restart without persistence) and took the group with
+			// it; trimming does not, an empty stream keeps its groups.
+			// XREADGROUP then returns immediately, so without recreating the
+			// group this loop spins and floods the log.
+			if strings.Contains(err.Error(), "NOGROUP") {
+				if errGroup := w.ensureGroup(ctx); errGroup == nil {
+					continue
+				} else {
+					w.opts.logger.Error(errGroup)
+				}
+			} else {
+				w.opts.logger.Errorf("error while reading from redis %v", err)
+			}
+
+			// Back off: the failing call did not block, so retrying straight
+			// away is a busy loop.
+			select {
+			case <-w.stop:
+				return
+			case <-time.After(w.opts.blockTime):
+			}
 			continue
 		}
 		// we have received the data we should loop it and queue the messages
@@ -200,8 +228,15 @@ loop:
 			if !ok {
 				return nil, queue.ErrQueueHasBeenClosed
 			}
+			body, ok := task.Values["body"].(string)
+			if !ok {
+				return nil, fmt.Errorf("redis stream message %q has no string body", task.ID)
+			}
+
 			var data job.Message
-			_ = json.Unmarshal(bytesconv.StrToBytes(task.Values["body"].(string)), &data)
+			if err := json.Unmarshal(bytesconv.StrToBytes(body), &data); err != nil {
+				return nil, fmt.Errorf("unmarshal redis stream message %q: %w", task.ID, err)
+			}
 			return &data, nil
 		case <-time.After(1 * time.Second):
 			if clock == 5 {

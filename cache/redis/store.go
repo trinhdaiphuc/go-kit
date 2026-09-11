@@ -3,6 +3,7 @@ package cacheredis
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"time"
 
@@ -65,13 +66,19 @@ func (c *redisCache[K, V]) BulkGet(ctx context.Context, keys []K) (map[K]V, erro
 			continue
 		}
 
+		str, ok := data.(string)
+		if !ok {
+			log.Bg().Error("Unexpected MGet value type", zap.String("key", keyVals[i]))
+			continue
+		}
+
 		var value V
-		err = c.unmarshal(data.(string), &value)
+		err = c.unmarshal(str, &value)
 		if err != nil {
 			log.Bg().Error("Unmarshal error", zap.Error(err))
 			continue
 		}
-		rs[c.decodeHashKey(keyVals[i])] = value
+		rs[keys[i]] = value
 	}
 
 	if len(rs) != len(keys) {
@@ -199,7 +206,7 @@ func (c *redisCache[K, V]) HGet(ctx context.Context, key, field K) (value V, err
 		return value, cache.ErrorKeyNotFound
 	}
 
-	allValues, err := c.loadAll(ctx, field)
+	allValues, err := c.loadAll(ctx, key)
 	if err != nil {
 		return value, err
 	}
@@ -229,7 +236,11 @@ func (c *redisCache[K, V]) HGetAll(ctx context.Context, key K) (map[K]V, error) 
 		if err != nil {
 			return nil, err
 		}
-		rs[c.decodeHashKey(keyStr)] = data
+		hashKey, err := c.decodeHashKey(keyStr)
+		if err != nil {
+			return nil, err
+		}
+		rs[hashKey] = data
 	}
 
 	return rs, nil
@@ -278,12 +289,12 @@ func (c *redisCache[K, V]) encodeKey(key K) string {
 	return c.opts.Prefix + ":" + c.opts.KeyEncoder(key)
 }
 
-func (c *redisCache[K, V]) decodeHashKey(key string) (result K) {
+func (c *redisCache[K, V]) decodeHashKey(key string) (result K, err error) {
 	k := c.opts.KeyDecoder(key)
 
 	decodeKey, ok := k.(K)
 	if !ok {
-		return
+		return result, fmt.Errorf("decode hash key %q: KeyDecoder returned %T, want %T", key, k, result)
 	}
-	return decodeKey
+	return decodeKey, nil
 }

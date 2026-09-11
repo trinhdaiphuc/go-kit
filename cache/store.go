@@ -95,4 +95,8 @@ func (l BulkLoaderFunc[K, V]) BulkLoad(ctx context.Context, c Store[K, V], keys 
 var (
 	ErrorKeyNotFound    = errors.New("key not found")
 	ErrorFailedSetCache = errors.New("failed to set cache")
+	// ErrorUnsupportedOperation is returned by a backend that cannot honour an
+	// operation of this interface, so callers fail loudly instead of reading
+	// back a zero value from a silent no-op.
+	ErrorUnsupportedOperation = errors.New("operation not supported by this cache backend")
 )
