@@ -117,10 +117,11 @@ func (w *Worker) fetchTask() {
 			Block: w.opts.blockTime,
 		}).Result()
 		if err != nil && !errors.Is(err, redis.Nil) {
-			// NOGROUP means the stream key is gone (eviction, FLUSHDB, trimmed
-			// away) and took the group with it. XREADGROUP then returns
-			// immediately, so without recreating the group this loop spins and
-			// floods the log.
+			// NOGROUP means the whole stream key is gone (DEL, FLUSHDB, a TTL,
+			// eviction, a restart without persistence) and took the group with
+			// it; trimming does not, an empty stream keeps its groups.
+			// XREADGROUP then returns immediately, so without recreating the
+			// group this loop spins and floods the log.
 			if strings.Contains(err.Error(), "NOGROUP") {
 				if errGroup := w.ensureGroup(ctx); errGroup == nil {
 					continue
