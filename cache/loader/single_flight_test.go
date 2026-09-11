@@ -2,6 +2,7 @@ package cacheloader
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -50,4 +51,39 @@ func TestSingleFlightLoader_LoadRespectsContext(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("Load ignored the context deadline")
 	}
+}
+
+// Load and LoadAll return different types; sharing a singleflight key makes one
+// of them type-assert the other's result.
+func TestSingleFlightLoader_LoadAndLoadAllDoNotShareKeys(t *testing.T) {
+	loader := &blockingLoader{release: make(chan struct{})}
+	sf := NewSingleFlightLoader[string, *Data](loader)
+
+	loadErr := make(chan error, 1)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				loadErr <- fmt.Errorf("panic: %v", r)
+			}
+		}()
+		_, err := sf.Load(context.Background(), nil, "key")
+		loadErr <- err
+	}()
+
+	allErr := make(chan error, 1)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				allErr <- fmt.Errorf("panic: %v", r)
+			}
+		}()
+		_, err := sf.LoadAll(context.Background(), nil, "key")
+		allErr <- err
+	}()
+
+	time.Sleep(50 * time.Millisecond) // let both goroutines reach the group
+	close(loader.release)
+
+	assert.NoError(t, <-loadErr)
+	assert.NoError(t, <-allErr)
 }
