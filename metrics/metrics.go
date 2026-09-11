@@ -1,6 +1,8 @@
 package metrics
 
 import (
+	"sync"
+
 	prom "github.com/prometheus/client_golang/prometheus"
 )
 
@@ -39,85 +41,92 @@ var (
 	metricLabels   = []string{"service_name", "method", "endpoint", "status_code", "http_status_code"}
 	defaultBuckets = []float64{.005, .01, .02, .03, .05, .1, .2, .3, .5, 1, 2, 3, 5, 10}
 	monitor        *Monitor
+	monitorOnce    sync.Once
 )
 
-// NewServerMonitor returns a new ServerMetrics object.
+// NewServerMonitor returns the process-wide Monitor, building and registering
+// its collectors on the first call. Later calls return that same Monitor and
+// ignore serviceName: a Prometheus collector can only be registered once, so
+// re-running the body would panic in MustRegister.
 func NewServerMonitor(serviceName string) *Monitor {
-	if serviceName == "" {
-		serviceName = defaultServiceName
-	}
+	monitorOnce.Do(func() {
+		if serviceName == "" {
+			serviceName = defaultServiceName
+		}
 
-	monitor = &Monitor{
-		serviceName: serviceName,
-		requestRates: prom.NewCounterVec(
-			prom.CounterOpts{
-				Name: "request_rates",
-				Help: "Total number of request hit to the server.",
-			},
-			metricLabels,
-		),
-		durationSeconds: prom.NewHistogramVec(
-			prom.HistogramOpts{
-				Name:    "request_duration_seconds",
-				Help:    "Histogram of response durationSeconds (seconds) of request that had been handled by the server.",
-				Buckets: defaultBuckets,
-			},
-			metricLabels,
-		),
-		clientRequestRates: prom.NewCounterVec(
-			prom.CounterOpts{
-				Name: "client_request_rates",
-				Help: "Total number of request hit to the client.",
-			},
-			metricLabels,
-		),
-		clientDurationSeconds: prom.NewHistogramVec(
-			prom.HistogramOpts{
-				Name:    "client_request_duration_seconds",
-				Help:    "Histogram of response durationSeconds (seconds) of request that had been handled by the client.",
-				Buckets: defaultBuckets,
-			},
-			metricLabels,
-		),
-		circuitBreakerState: prom.NewGaugeVec(
-			prom.GaugeOpts{
-				Name: "breaker_state",
-				Help: "The states of the circuit breaker. 0=Not Active, 1=Active. state=['open','half-open','closed']",
-			},
-			[]string{"service_name", "name", "state"},
-		),
-		requestCounter: prom.NewCounterVec(
-			prom.CounterOpts{
-				Name: "breaker_requests_total",
-				Help: "Total number of requests executed through the circuit breaker",
-			},
-			[]string{"service_name", "name"},
-		),
-		successCounter: prom.NewCounterVec(
-			prom.CounterOpts{
-				Name: "breaker_success_total",
-				Help: "Total number of successful requests",
-			},
-			[]string{"service_name", "name"},
-		),
-		failureCounter: prom.NewCounterVec(
-			prom.CounterOpts{
-				Name: "breaker_failure_total",
-				Help: "Total number of failed requests",
-			},
-			[]string{"service_name", "name"},
-		),
-	}
-	prom.MustRegister(
-		monitor.requestRates,
-		monitor.durationSeconds,
-		monitor.clientRequestRates,
-		monitor.clientDurationSeconds,
-		monitor.circuitBreakerState,
-		monitor.requestCounter,
-		monitor.successCounter,
-		monitor.failureCounter,
-	)
+		monitor = &Monitor{
+			serviceName: serviceName,
+			requestRates: prom.NewCounterVec(
+				prom.CounterOpts{
+					Name: "request_rates",
+					Help: "Total number of request hit to the server.",
+				},
+				metricLabels,
+			),
+			durationSeconds: prom.NewHistogramVec(
+				prom.HistogramOpts{
+					Name:    "request_duration_seconds",
+					Help:    "Histogram of response durationSeconds (seconds) of request that had been handled by the server.",
+					Buckets: defaultBuckets,
+				},
+				metricLabels,
+			),
+			clientRequestRates: prom.NewCounterVec(
+				prom.CounterOpts{
+					Name: "client_request_rates",
+					Help: "Total number of request hit to the client.",
+				},
+				metricLabels,
+			),
+			clientDurationSeconds: prom.NewHistogramVec(
+				prom.HistogramOpts{
+					Name:    "client_request_duration_seconds",
+					Help:    "Histogram of response durationSeconds (seconds) of request that had been handled by the client.",
+					Buckets: defaultBuckets,
+				},
+				metricLabels,
+			),
+			circuitBreakerState: prom.NewGaugeVec(
+				prom.GaugeOpts{
+					Name: "breaker_state",
+					Help: "The states of the circuit breaker. 0=Not Active, 1=Active. state=['open','half-open','closed']",
+				},
+				[]string{"service_name", "name", "state"},
+			),
+			requestCounter: prom.NewCounterVec(
+				prom.CounterOpts{
+					Name: "breaker_requests_total",
+					Help: "Total number of requests executed through the circuit breaker",
+				},
+				[]string{"service_name", "name"},
+			),
+			successCounter: prom.NewCounterVec(
+				prom.CounterOpts{
+					Name: "breaker_success_total",
+					Help: "Total number of successful requests",
+				},
+				[]string{"service_name", "name"},
+			),
+			failureCounter: prom.NewCounterVec(
+				prom.CounterOpts{
+					Name: "breaker_failure_total",
+					Help: "Total number of failed requests",
+				},
+				[]string{"service_name", "name"},
+			),
+		}
+		prom.MustRegister(
+			monitor.requestRates,
+			monitor.durationSeconds,
+			monitor.clientRequestRates,
+			monitor.clientDurationSeconds,
+			monitor.circuitBreakerState,
+			monitor.requestCounter,
+			monitor.successCounter,
+			monitor.failureCounter,
+		)
+	})
+
 	return monitor
 }
 

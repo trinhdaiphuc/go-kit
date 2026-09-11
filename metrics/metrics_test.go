@@ -32,3 +32,11 @@ func TestNewServerMonitor_RegistersEveryCollector(t *testing.T) {
 		})
 	}
 }
+
+func TestNewServerMonitor_SecondCallDoesNotPanic(t *testing.T) {
+	first := NewServerMonitor("test-service")
+
+	var second *Monitor
+	assert.NotPanics(t, func() { second = NewServerMonitor("test-service") })
+	assert.Same(t, first, second)
+}
