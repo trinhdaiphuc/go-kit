@@ -111,6 +111,8 @@ func NewServerMonitor(serviceName string) *Monitor {
 	prom.MustRegister(
 		monitor.requestRates,
 		monitor.durationSeconds,
+		monitor.clientRequestRates,
+		monitor.clientDurationSeconds,
 		monitor.circuitBreakerState,
 		monitor.requestCounter,
 		monitor.successCounter,
