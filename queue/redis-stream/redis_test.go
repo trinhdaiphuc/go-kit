@@ -7,6 +7,7 @@ import (
 	"log"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -421,4 +422,65 @@ func TestRequestRejectsMalformedMessage(t *testing.T) {
 	task, err := w.Request()
 	assert.Nil(t, task)
 	assert.ErrorContains(t, err, "no string body")
+}
+
+type countingLogger struct {
+	mu     sync.Mutex
+	errors []string
+}
+
+func (l *countingLogger) record(msg string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.errors = append(l.errors, msg)
+}
+
+func (l *countingLogger) errorCount() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return len(l.errors)
+}
+
+func (l *countingLogger) Infof(format string, args ...any)  {}
+func (l *countingLogger) Info(args ...any)                  {}
+func (l *countingLogger) Fatalf(format string, args ...any) {}
+func (l *countingLogger) Fatal(args ...any)                 {}
+func (l *countingLogger) Errorf(format string, args ...any) { l.record(fmt.Sprintf(format, args...)) }
+func (l *countingLogger) Error(args ...any)                 { l.record(fmt.Sprint(args...)) }
+
+// Losing the stream key (eviction, FLUSHDB, trim) drops the consumer group with
+// it. XREADGROUP then fails instantly with NOGROUP, so the fetch loop used to
+// spin and flood the log instead of recreating the group.
+func TestFetchTaskRecoversFromNoGroup(t *testing.T) {
+	ctx := context.Background()
+	redisC, endpoint := setupRedisContainer(ctx, t)
+	defer testcontainers.CleanupContainer(t, redisC)
+
+	logger := &countingLogger{}
+	w := NewWorker(
+		WithAddr(endpoint),
+		WithStreamName("nogroup"),
+		WithBlockTime(100*time.Millisecond),
+		WithLogger(logger),
+	)
+	defer func() {
+		assert.NoError(t, w.Shutdown())
+	}()
+
+	w.startConsumer()
+
+	// Drop the stream key: the group goes with it.
+	require.NoError(t, w.rdb.Del(ctx, "nogroup").Err())
+	time.Sleep(500 * time.Millisecond)
+
+	assert.LessOrEqual(t, logger.errorCount(), 1, "NOGROUP must not be logged on every loop: %v", logger.errors)
+
+	// The worker must have recreated the group and keep consuming.
+	require.NoError(t, w.rdb.XAdd(ctx, &redis.XAddArgs{
+		Stream: "nogroup",
+		Values: map[string]any{"body": `{"Body":"cGluZw=="}`},
+	}).Err())
+	task, err := w.Request()
+	require.NoError(t, err)
+	assert.NotNil(t, task)
 }

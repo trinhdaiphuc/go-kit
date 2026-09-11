@@ -78,17 +78,23 @@ func NewWorker(opts ...Option) *Worker {
 
 func (w *Worker) startConsumer() {
 	w.startOnce.Do(func() {
-		if err := w.rdb.XGroupCreateMkStream(
-			context.Background(),
-			w.opts.streamName,
-			w.opts.group,
-			"$",
-		).Err(); err != nil {
+		if err := w.ensureGroup(context.Background()); err != nil {
 			w.opts.logger.Error(err)
 		}
 
 		go w.fetchTask()
 	})
+}
+
+// ensureGroup creates the stream and its consumer group. BUSYGROUP just means
+// another worker got there first, which is the normal case on restart.
+func (w *Worker) ensureGroup(ctx context.Context) error {
+	err := w.rdb.XGroupCreateMkStream(ctx, w.opts.streamName, w.opts.group, "$").Err()
+	if err != nil && !strings.Contains(err.Error(), "BUSYGROUP") {
+		return fmt.Errorf("create consumer group %s on stream %s: %w", w.opts.group, w.opts.streamName, err)
+	}
+
+	return nil
 }
 
 func (w *Worker) fetchTask() {
@@ -111,7 +117,27 @@ func (w *Worker) fetchTask() {
 			Block: w.opts.blockTime,
 		}).Result()
 		if err != nil && !errors.Is(err, redis.Nil) {
-			w.opts.logger.Errorf("error while reading from redis %v", err)
+			// NOGROUP means the stream key is gone (eviction, FLUSHDB, trimmed
+			// away) and took the group with it. XREADGROUP then returns
+			// immediately, so without recreating the group this loop spins and
+			// floods the log.
+			if strings.Contains(err.Error(), "NOGROUP") {
+				if errGroup := w.ensureGroup(ctx); errGroup == nil {
+					continue
+				} else {
+					w.opts.logger.Error(errGroup)
+				}
+			} else {
+				w.opts.logger.Errorf("error while reading from redis %v", err)
+			}
+
+			// Back off: the failing call did not block, so retrying straight
+			// away is a busy loop.
+			select {
+			case <-w.stop:
+				return
+			case <-time.After(w.opts.blockTime):
+			}
 			continue
 		}
 		// we have received the data we should loop it and queue the messages
