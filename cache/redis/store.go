@@ -65,8 +65,14 @@ func (c *redisCache[K, V]) BulkGet(ctx context.Context, keys []K) (map[K]V, erro
 			continue
 		}
 
+		str, ok := data.(string)
+		if !ok {
+			log.Bg().Error("Unexpected MGet value type", zap.String("key", keyVals[i]))
+			continue
+		}
+
 		var value V
-		err = c.unmarshal(data.(string), &value)
+		err = c.unmarshal(str, &value)
 		if err != nil {
 			log.Bg().Error("Unmarshal error", zap.Error(err))
 			continue
