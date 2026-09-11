@@ -3,6 +3,8 @@ package cachelocal
 import (
 	"context"
 	"runtime"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -68,4 +70,32 @@ func TestClient_UnsupportedOperations(t *testing.T) {
 	t.Run("HDel", func(t *testing.T) {
 		assert.ErrorIs(t, c.HDel(ctx, "key", "field"), cache.ErrorUnsupportedOperation)
 	})
+}
+
+func TestClient_SetNXOnlyOneWinner(t *testing.T) {
+	c := NewClient[string, *data]()
+	defer c.Close()
+
+	const goroutines = 50
+	var (
+		wg    sync.WaitGroup
+		wins  atomic.Int64
+		start = make(chan struct{})
+	)
+	for i := 0; i < goroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			ok, err := c.SetNX(context.Background(), "key", &data{Name: "x"})
+			assert.NoError(t, err)
+			if ok {
+				wins.Add(1)
+			}
+		}()
+	}
+	close(start)
+	wg.Wait()
+
+	assert.Equal(t, int64(1), wins.Load(), "exactly one caller may win SetNX")
 }

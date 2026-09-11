@@ -74,15 +74,13 @@ func (c *client[K, V]) Set(ctx context.Context, key K, value V) error {
 }
 
 func (c *client[K, V]) SetNX(ctx context.Context, key K, value V) (bool, error) {
-	// TTLCache doesn't have native SetNX, so we check existence first
-	if c.cli.Has(key) {
-		return false, nil
-	}
-	item := c.cli.Set(key, value, c.opts.TTL)
+	// GetOrSet does the check and the insert under the cache's own lock; a
+	// Has()-then-Set() pair lets two callers both believe they won the key.
+	item, found := c.cli.GetOrSet(key, value, ttlcache.WithTTL[K, V](c.opts.TTL))
 	if item == nil {
 		return false, cache.ErrorFailedSetCache
 	}
-	return true, nil
+	return !found, nil
 }
 
 func (c *client[K, V]) Delete(ctx context.Context, keys ...K) error {
