@@ -23,7 +23,16 @@ const (
 var (
 	instance *Factory
 	once     = sync.Once{}
+
+	_defaultConfig = &Config{LevelFrom: "info", Encoder: "json"}
 )
+
+// factory returns the process-wide Factory, building it on first use. Every
+// read of instance goes through here: once.Do gives the happens-before edge
+// that a bare `if instance == nil` check does not.
+func factory() *Factory {
+	return New(_defaultConfig)
+}
 
 // Factory wraps zap.Logger
 type Factory struct {
@@ -70,7 +79,7 @@ func (logger Factory) Bg() Logger {
 //	    defer instance.PrintError("DoSomething", &_err)
 func (logger Factory) PrintError(msg string, err *error) {
 	if *err != nil {
-		instance.Sugar().Errorf("%v: %+v", msg, *err)
+		factory().Sugar().Errorf("%v: %+v", msg, *err)
 	}
 }
 
@@ -306,26 +315,14 @@ func New(cfg ...*Config) *Factory {
 
 // Bg creates a context-unaware logger.
 func Bg() Logger {
-	if instance == nil {
-		New(&Config{
-			LevelFrom: "info",
-			Encoder:   "json",
-		})
-	}
-	return instance
+	return factory()
 }
 
 // For returns a context-aware Logger. If the context
 // contains an OpenTracing span, all logging calls are also
 // echo-ed into the span.
 func For(ctx context.Context, contextFields ...Fn) Logger {
-	if instance == nil {
-		New(&Config{
-			LevelFrom: "info",
-			Encoder:   "json",
-		})
-	}
-	return instance.For(ctx, contextFields...)
+	return factory().For(ctx, contextFields...)
 }
 
 func parseLevelOrDefault(levelStr string, defaultLevel zapcore.Level) (zapcore.Level, error) {
