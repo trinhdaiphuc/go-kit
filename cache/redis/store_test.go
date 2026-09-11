@@ -792,3 +792,63 @@ func Test_redisCache_Close(t *testing.T) {
 		})
 	}
 }
+
+func Test_redisCache_BulkGet(t *testing.T) {
+	tests := []struct {
+		name    string
+		keys    []string
+		mock    func(mock redismock.ClientMock)
+		want    map[string]*Data
+		wantErr bool
+	}{
+		{
+			name: "all keys hit — result is keyed by the original key, not the prefixed one",
+			keys: []string{"key1", "key2"},
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectMGet("test:key1", "test:key2").SetVal([]any{
+					`{"name":"John Doe","value":100}`,
+					`{"name":"Jane Doe","value":200}`,
+				})
+			},
+			want: map[string]*Data{
+				"key1": {Name: "John Doe", Value: 100},
+				"key2": {Name: "Jane Doe", Value: 200},
+			},
+		},
+		{
+			name: "partial hit falls back to the loader for missing keys only",
+			keys: []string{"key1", "key2"},
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectMGet("test:key1", "test:key2").SetVal([]any{
+					`{"name":"John Doe","value":100}`,
+					nil,
+				})
+			},
+			want: map[string]*Data{
+				"key1": {Name: "John Doe", Value: 100},
+			},
+		},
+		{
+			name: "no keys",
+			keys: nil,
+			want: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo, mock := newRedisClientMock[string, *Data](&loaderSuccess{})
+			if tt.mock != nil {
+				tt.mock(mock)
+			}
+
+			got, err := repo.BulkGet(context.Background(), tt.keys)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}

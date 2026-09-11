@@ -71,7 +71,7 @@ func (c *redisCache[K, V]) BulkGet(ctx context.Context, keys []K) (map[K]V, erro
 			log.Bg().Error("Unmarshal error", zap.Error(err))
 			continue
 		}
-		rs[c.decodeHashKey(keyVals[i])] = value
+		rs[keys[i]] = value
 	}
 
 	if len(rs) != len(keys) {
