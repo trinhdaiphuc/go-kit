@@ -15,9 +15,21 @@ import (
 	"github.com/golang-queue/queue/core"
 	"github.com/golang-queue/queue/job"
 	"github.com/redis/go-redis/v9"
+	"go.opentelemetry.io/otel/trace"
+
+	"github.com/trinhdaiphuc/go-kit/tracing"
 )
 
 var _ core.Worker = (*Worker)(nil)
+
+const (
+	// fieldBody carries the marshalled job.Message, fieldHeader the trace
+	// metadata that must not pollute the payload.
+	fieldBody   = "body"
+	fieldHeader = "header"
+
+	producerSpanName = "redis-stream-producer"
+)
 
 // Worker for Redis
 type Worker struct {
@@ -30,6 +42,9 @@ type Worker struct {
 	stop      chan struct{}
 	exit      chan struct{}
 	opts      options
+	// headers maps an in-flight message to its header; queue.run() only accepts
+	// *job.Message, so the header cannot ride along on the task itself.
+	headers sync.Map
 }
 
 // NewWorker for struc
@@ -153,7 +168,7 @@ func (w *Worker) fetchTask() {
 				case <-w.stop:
 					// Todo: re-queue the task
 					w.opts.logger.Info("re-queue the task: ", message.ID)
-					if err := w.queue(message.Values); err != nil {
+					if err := w.queue(context.Background(), message.Values); err != nil {
 						w.opts.logger.Error("error to re-queue the task: ", message.ID)
 					}
 					close(w.exit)
@@ -190,9 +205,7 @@ func (w *Worker) Shutdown() error {
 	return nil
 }
 
-func (w *Worker) queue(data any) error {
-	ctx := context.Background()
-
+func (w *Worker) queue(ctx context.Context, data any) error {
 	// Publish a message.
 	err := w.rdb.XAdd(ctx, &redis.XAddArgs{
 		Stream: w.opts.streamName,
@@ -209,12 +222,63 @@ func (w *Worker) Queue(task core.TaskMessage) error {
 		return queue.ErrQueueShutdown
 	}
 
-	return w.queue(map[string]any{"body": bytesconv.BytesToStr(task.Bytes())})
+	return w.QueueWithContext(context.Background(), task)
+}
+
+// QueueWithContext publishes a task and carries the trace context of ctx along
+// with it. The producer span is created unconditionally, so a caller with no
+// trace still gives the consumer a trace to hang off.
+func (w *Worker) QueueWithContext(ctx context.Context, task core.TaskMessage) error {
+	if atomic.LoadInt32(&w.stopFlag) == 1 {
+		return queue.ErrQueueShutdown
+	}
+
+	ctx, span := tracing.CreateSpan(
+		ctx, producerSpanName,
+		trace.WithSpanKind(trace.SpanKindProducer),
+	)
+	defer span.End()
+
+	values := map[string]any{fieldBody: bytesconv.BytesToStr(task.Bytes())}
+	if header := tracing.InjectHeader(ctx); len(header) > 0 {
+		raw, err := json.Marshal(header)
+		if err != nil {
+			return fmt.Errorf("marshal trace header: %w", err)
+		}
+		values[fieldHeader] = bytesconv.BytesToStr(raw)
+	}
+
+	if err := w.queue(ctx, values); err != nil {
+		span.RecordError(err)
+		return err
+	}
+
+	return nil
 }
 
 // Run start the worker
 func (w *Worker) Run(ctx context.Context, task core.TaskMessage) error {
+	if header, ok := w.headers.LoadAndDelete(task); ok {
+		ctx = tracing.ContextWithHeader(ctx, header.(map[string]string))
+	}
+
 	return w.opts.runFunc(ctx, task)
+}
+
+// parseHeader decodes the header field of a stream entry. A malformed header
+// must not drop the message, so it degrades to no header.
+func parseHeader(value any) map[string]string {
+	raw, ok := value.(string)
+	if !ok || raw == "" {
+		return nil
+	}
+
+	header := make(map[string]string)
+	if err := json.Unmarshal(bytesconv.StrToBytes(raw), &header); err != nil {
+		return nil
+	}
+
+	return header
 }
 
 // Request a new task
@@ -228,7 +292,7 @@ loop:
 			if !ok {
 				return nil, queue.ErrQueueHasBeenClosed
 			}
-			body, ok := task.Values["body"].(string)
+			body, ok := task.Values[fieldBody].(string)
 			if !ok {
 				return nil, fmt.Errorf("redis stream message %q has no string body", task.ID)
 			}
@@ -237,6 +301,11 @@ loop:
 			if err := json.Unmarshal(bytesconv.StrToBytes(body), &data); err != nil {
 				return nil, fmt.Errorf("unmarshal redis stream message %q: %w", task.ID, err)
 			}
+
+			if header := parseHeader(task.Values[fieldHeader]); len(header) > 0 {
+				w.headers.Store(&data, header)
+			}
+
 			return &data, nil
 		case <-time.After(1 * time.Second):
 			if clock == 5 {

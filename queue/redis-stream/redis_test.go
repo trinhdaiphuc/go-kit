@@ -20,6 +20,8 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"go.uber.org/goleak"
+
+	"github.com/trinhdaiphuc/go-kit/tracing"
 )
 
 func TestMain(m *testing.M) {
@@ -483,4 +485,57 @@ func TestFetchTaskRecoversFromNoGroup(t *testing.T) {
 	task, err := w.Request()
 	require.NoError(t, err)
 	assert.NotNil(t, task)
+}
+
+// The header field must reach the run func through the context: queue.run()
+// only accepts *job.Message, so it cannot ride on the task itself.
+func TestRequestCarriesHeaderIntoRunContext(t *testing.T) {
+	ctx := context.Background()
+	redisC, endpoint := setupRedisContainer(ctx, t)
+	defer testcontainers.CleanupContainer(t, redisC)
+
+	got := make(chan map[string]string, 1)
+	w := NewWorker(
+		WithAddr(endpoint),
+		WithStreamName("headered"),
+		WithBlockTime(100*time.Millisecond),
+		WithRunFunc(func(ctx context.Context, _ core.TaskMessage) error {
+			got <- tracing.HeaderFromContext(ctx)
+			return nil
+		}),
+	)
+	defer func() {
+		assert.NoError(t, w.Shutdown())
+	}()
+
+	w.startConsumer()
+	require.NoError(t, w.rdb.XAdd(ctx, &redis.XAddArgs{
+		Stream: "headered",
+		Values: map[string]any{
+			fieldBody:   `{"body":"aGk=","timeout":60000000000}`,
+			fieldHeader: `{"traceparent":"00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"}`,
+		},
+	}).Err())
+
+	task, err := w.Request()
+	require.NoError(t, err)
+	require.NoError(t, w.Run(context.Background(), task))
+
+	select {
+	case header := <-got:
+		assert.Equal(t, "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01", header["traceparent"])
+	case <-time.After(time.Second):
+		t.Fatal("run func was not called")
+	}
+
+	// The entry is dropped once consumed, so the worker cannot accumulate headers.
+	_, still := w.headers.Load(task)
+	assert.False(t, still)
+}
+
+func TestParseHeaderDegradesOnGarbage(t *testing.T) {
+	assert.Nil(t, parseHeader(nil))
+	assert.Nil(t, parseHeader(""))
+	assert.Nil(t, parseHeader("{not json"))
+	assert.Equal(t, map[string]string{"b3": "x"}, parseHeader(`{"b3":"x"}`))
 }

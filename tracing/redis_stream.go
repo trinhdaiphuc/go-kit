@@ -17,6 +17,8 @@ const (
 
 func WrapRedisStreamConsumer(group, topic string, handler RedisStreamConsumer) RedisStreamConsumer {
 	return func(ctx context.Context, message core.TaskMessage) error {
+		ctx = ExtractHeader(ctx, HeaderFromContext(ctx))
+
 		ctx, span := CreateSpan(
 			ctx, "redis-stream-consumer",
 			trace.WithAttributes(
